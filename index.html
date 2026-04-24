@@ -484,7 +484,7 @@ hr.d{border:none;border-top:1px solid var(--border-light);margin:16px 0}
     </div>
     <div id="lerr"></div>
   </div>
-  <div class="maint-link"><span onclick="openMaint()">الإدارة الفنية</span></div>
+  <div class="maint-link"><span onclick="openMaint()">الصيانة</span></div>
 </div>
 </div>
 
@@ -511,7 +511,7 @@ hr.d{border:none;border-top:1px solid var(--border-light);margin:16px 0}
       <span class="m-err" id="m-err">خطأ</span>
       <button class="mbtn" style="font-size:.75rem" onclick="submitMaintPass()">دخول</button>
     </div>
-    <button class="m-back-btn" onclick="closeMaint()">عودة</button>
+    <button class="m-back-btn" onclick="closeMaint()">X</button>
   </div>
   <div class="m-panel" id="m-panel"></div>
 </div>
@@ -519,7 +519,7 @@ hr.d{border:none;border-top:1px solid var(--border-light);margin:16px 0}
 <div id="portal">
   <div class="portal-box">
     <div class="portal-title">اي ام سبيشل</div>
-    <div class="portal-sub">نستمع إليك.. أرسل شكواك أو طلبك بشكل مباشر</div>
+    <div class="portal-sub">نستمع إليك..</div>
     <div class="fg"><label class="fl">رقم الجوال</label><input class="fi" id="p-mobile" type="tel" placeholder="05XXXXXXXX" maxlength="15"></div>
     <div class="fg"><label class="fl">الفرع (اختياري)</label>
       <div class="branch-btns" id="p-branches">
@@ -531,7 +531,7 @@ hr.d{border:none;border-top:1px solid var(--border-light);margin:16px 0}
         <button class="branch-btn" onclick="togglePortalBranch(this,'فرع شرق بلازا')">شرق بلازا</button>
       </div>
     </div>
-    <div class="fg"><label class="fl">رسالتك (شكوى أو طلب)</label><textarea class="ft" id="p-msg" rows="5" placeholder="اكتب رسالتك وتفاصيلها هنا..."></textarea></div>
+    <div class="fg"><label class="fl">رسالتك </label><textarea class="ft" id="p-msg" rows="5" placeholder="اكتب رسالتك وتفاصيلها هنا..."></textarea></div>
     <button class="btn pri" style="width:100%; padding: 14px; margin-top: 10px;" onclick="submitPortalMsg()">إرسال الرسالة</button>
     <div id="p-success" style="display:none;margin-top:16px;background:var(--gnl);border:1px solid var(--gnb);padding:14px;border-radius:var(--r2);font-size:.9rem;font-weight:700;color:var(--gn);text-align:center">تم إرسال رسالتك بنجاح. سيتواصل معك فريقنا قريباً.</div>
   </div>
