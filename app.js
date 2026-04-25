@@ -1,0 +1,1133 @@
+
+// ═══ PORTAL CHECK ═══
+if(window.location.hash==='#portal'){
+  document.getElementById('ls').style.display='none';
+  document.getElementById('portal').classList.add('on');
+}
+
+// ═══ MAINT CODE TEXT ═══
+const MCODE=`0x4C4F4144494E47 SYSTEM_BOOT
+IMS_CORE_v4.2.0 BUILD:20250328
+INIT:auth.handler INIT:request.processor
+INIT:complaint.engine INIT:portal.gateway
+0xF3A1B2C4D5E6F708 SESSION_TOKEN
+MODULE:StatusEngine LOADED
+MODULE:AuditTrail LOADED
+MODULE:BranchResolver LOADED
+MODULE:NotificationService LOADED
+MODULE:WarningSystem LOADED
+0x1A2B3C4D5E6F7890 ENCRYPTION_KEY
+CACHE:complaints CACHE:requests CACHE:users
+THREAD:auto_status_checker RUNNING
+THREAD:session_validator RUNNING
+0xDEADBEEF HEARTBEAT:OK
+READY_FOR_INPUT`;
+
+// ═══ DATA ═══
+const DEFAULT_USERS=[
+  {id:'o1',name:'المالك',role:'owner',pass:'1234',branch:null},
+  {id:'a1',name:'سارة العتيبي',role:'admin',pass:'4321',branch:null},
+  {id:'a2',name:'نورة الشمري',role:'admin',pass:'4321',branch:null},
+  {id:'b1',name:'اسمهان',role:'branch',pass:'5678',branch:'فرع القصر'},
+  {id:'b2',name:'مها',role:'branch',pass:'5678',branch:'فرع الرياض جاليري'},
+  {id:'c1',name:'موظف خدمة العملاء',role:'cs',pass:'9999',branch:null},
+];
+const DEFAULT_EMP={'فرع القصر':[{id:'e1',name:'اسمهان (المديرة)'}],'فرع سلام مول':[{id:'e2',name:'المديرة'}],'فرع الرياض جاليري':[{id:'e3',name:'مها (المديرة)'}],'فرع ذا ڤيو مول':[{id:'e4',name:'المديرة'}],'فرع مركز المملكة':[{id:'e5',name:'المديرة'}],'فرع شرق بلازا':[{id:'e6',name:'المديرة'}]};
+let users=JSON.parse(localStorage.getItem('ims_u')||'null')||DEFAULT_USERS;
+let complaints=JSON.parse(localStorage.getItem('ims_c')||'[]');
+let requests=JSON.parse(localStorage.getItem('ims_r')||'[]');
+
+// ═══ DEMO DATA ═══
+(function(){
+  if(localStorage.getItem('ims_demo_loaded'))return;
+  function daysAgo(d){return new Date(Date.now()-d*86400000).toISOString();}
+  const demoComplaints=[
+    {ref:'S032601',branch:'فرع القصر',ctype:'الأسلوب',mobile:'0551234567',client:'نورة السهلي',child:'ريم',desc:'قامت الموظفة بالتحدث مع ابنتي بأسلوب غير لائق وأمام الأطفال الآخرين مما سبب لها إحراجاً شديداً',demand:'الاعتذار الرسمي وضمان عدم تكرار الأمر',hdQ:'no',hdA:null,origin:'داخل الفصل أثناء وقت النشاط',financial:false,hasEmp:true,branchEmployee:'اسمهان (المديرة)',negative:false,negText:'',sentiment:'غاضب',demo:'أم',csnote:'العميلة كانت مضطربة بشكل واضح',gC:'f',gK:'f',status:'تحت المعالجة',ownerPriority:false,adminComment:null,branchComment:'تم التحقق من الحادثة وسيتم توجيه الموظفة',branchComment:'سيتم اتخاذ الإجراء اللازم',audit:[{who:'موظف خدمة العملاء',uid:'c1',role:'cs',ts:daysAgo(5),body:'تم إنشاء الشكوى'}],addedBy:'موظف خدمة العملاء',createdAt:daysAgo(5)},
+  ];
+  const demoRequests=[
+    {ref:'H032601',client:'سلمى الغامدي',mobile:'0556677889',branch:'فرع القصر',rtype:'استفسار',desc:'أريد الاستفسار عن إمكانية تسجيل طفلي في برنامج الدمج...',sentiment:'محايد',demo:'أم',csnote:'',gC:'f',status:'تم استلام الطلب',audit:[{who:'موظف خدمة العملاء',uid:'c1',role:'cs',ts:daysAgo(3),body:'تم إنشاء الطلب'}],addedBy:'موظف خدمة العملاء',createdAt:daysAgo(3)},
+  ];
+  demoComplaints.forEach(c=>{const d=new Date(c.createdAt);c.dateKey=`${String(d.getDate()).padStart(2,'0')}${String(d.getMonth()+1).padStart(2,'0')}${d.getFullYear()}`;c.dateDisplay=`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;c.timeDisplay=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;if(!c.seenBy)c.seenBy={};if(!c.tasks)c.tasks=[{id:'t1',label:'إرسال إشعار للعميل',done:false},{id:'t2',label:'معالجة الشكوى',done:false}];});
+  demoRequests.forEach(r=>{const d=new Date(r.createdAt);r.dateKey=`${String(d.getDate()).padStart(2,'0')}${String(d.getMonth()+1).padStart(2,'0')}${d.getFullYear()}`;r.dateDisplay=`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;r.timeDisplay=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;if(!r.seenBy)r.seenBy={};});
+  const existRefs=complaints.map(c=>c.ref); demoComplaints.forEach(c=>{if(!existRefs.includes(c.ref))complaints.push(c);});
+  const existReqRefs=requests.map(r=>r.ref); demoRequests.forEach(r=>{if(!existReqRefs.includes(r.ref))requests.push(r);});
+  complaints.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  requests.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  localStorage.setItem('ims_c',JSON.stringify(complaints)); localStorage.setItem('ims_r',JSON.stringify(requests)); localStorage.setItem('ims_demo_loaded','1');
+})();
+
+let messages=JSON.parse(localStorage.getItem('ims_m')||'[]');
+let branchMsgs=JSON.parse(localStorage.getItem('ims_bm')||'[]');
+let warnings=JSON.parse(localStorage.getItem('ims_w')||'[]');
+let signatureBase64=localStorage.getItem('ims_sig')||'';
+let session=JSON.parse(localStorage.getItem('ims_s')||'null');
+let ctypes=JSON.parse(localStorage.getItem('ims_ct')||'null')||['السياسات','الأسلوب','السلامة'];
+let rtypes=JSON.parse(localStorage.getItem('ims_rt')||'null')||['استفسار','اقتراح','خدمة','أخرى'];
+let sentiments=JSON.parse(localStorage.getItem('ims_sent')||'null')||['غاضب','محبط','قلق','محايد','هادئ'];
+let demos=JSON.parse(localStorage.getItem('ims_demo')||'null')||['أسرة','أم','أب','أخرى'];
+let employees=JSON.parse(localStorage.getItem('ims_emp')||'null')||DEFAULT_EMP;
+let branchWA=JSON.parse(localStorage.getItem('ims_bwa')||'{}')||{};
+let adminWANum=localStorage.getItem('ims_adminwa')||'';
+let maintPass=localStorage.getItem('ims_mp')||'010';
+const saveAdminWA=v=>{adminWANum=v;localStorage.setItem('ims_adminwa',v);};
+
+let currentRef=null,currentReqRef=null,prevTxt='',pendingC=null;
+let gC='m',gK='m',rG='m',currentTab='all',currentReqTab='all';
+let pageSeen=JSON.parse(localStorage.getItem('ims_ps')||'{}');
+
+const sv=()=>{
+  localStorage.setItem('ims_u',JSON.stringify(users));
+  localStorage.setItem('ims_ct',JSON.stringify(ctypes));
+  localStorage.setItem('ims_rt',JSON.stringify(rtypes));
+  localStorage.setItem('ims_sent',JSON.stringify(sentiments));
+  localStorage.setItem('ims_demo',JSON.stringify(demos));
+  localStorage.setItem('ims_emp',JSON.stringify(employees));
+  localStorage.setItem('ims_bwa',JSON.stringify(branchWA));
+};
+const saveC=()=>localStorage.setItem('ims_c',JSON.stringify(complaints));
+const saveR=()=>localStorage.setItem('ims_r',JSON.stringify(requests));
+const saveM=()=>localStorage.setItem('ims_m',JSON.stringify(messages));
+const saveBM=()=>localStorage.setItem('ims_bm',JSON.stringify(branchMsgs));
+const saveS=s=>localStorage.setItem('ims_s',JSON.stringify(s));
+const savePSeen=()=>localStorage.setItem('ims_ps',JSON.stringify(pageSeen));
+const pad=(n,l)=>String(n).padStart(l,'0');
+const MO=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function fmtShort(iso){const d=new Date(iso);return`${d.getDate()} ${MO[d.getMonth()]}`;}
+function fmtTime(iso){const d=new Date(iso),h=d.getHours(),m=pad(d.getMinutes(),2);return`${h>12?h-12:(h===0?12:h)}:${m} ${h>=12?'مساء':'صباحاً'}`;}
+function nowISO(){return new Date().toISOString();}
+function genRef(){const d=new Date(),dd=pad(d.getDate(),2),mm=pad(d.getMonth()+1,2),yr=d.getFullYear(),key=`${dd}${mm}${yr}`;return{ref:`S${mm}${dd}${pad(complaints.filter(c=>c.dateKey===key).length+1,2)}`,todayKey:key};}
+function genReqRef(){const d=new Date(),dd=pad(d.getDate(),2),mm=pad(d.getMonth()+1,2),yr=d.getFullYear(),key=`${dd}${mm}${yr}`;return{ref:`H${mm}${dd}${pad(requests.filter(r=>r.dateKey===key).length+1,2)}`,todayKey:key};}
+
+const SMAP={'تحت المعالجة':'btl','جارية حاليا':'bb','تمت المعالجة':'bg','معاد فتحها':'bp','مستبعدة':'bgr'};
+const USER_ST=['تحت المعالجة','تمت المعالجة','معاد فتحها','مستبعدة'];
+const SPERMS={'تحت المعالجة':['owner','admin','cs','maint'],'تمت المعالجة':['owner','admin','cs','maint'],'معاد فتحها':['owner','cs','maint'],'مستبعدة':['owner','cs','maint']};
+const RSTAT_MAP={'تم استلام الطلب':'bb','تمت معالجة الطلب':'bg','طلب مستبعد':'bgr'};
+function statusesFor(r){return USER_ST.filter(s=>{if(r==='admin'&&s==='مستبعدة')return false;return(SPERMS[s]||[]).includes(r);});}
+function sBadge(s){return`<span class="badge ${SMAP[s]||'bgr'}">${s}</span>`;}
+function rBadge(s){return`<span class="badge ${RSTAT_MAP[s]||'bgr'}">${s}</span>`;}
+const isActive=c=>(Date.now()-new Date(c.createdAt).getTime())<3600000&&c.status==='جارية حاليا';
+const isDone=c=>c.status==='تمت المعالجة'||c.status==='مستبعدة';
+const isExcluded=c=>c.status==='مستبعدة';
+const isReqDone=r=>r.status==='تمت معالجة الطلب'||r.status==='طلب مستبعد';
+
+function runAuto(){
+  let ch=false;
+  complaints.forEach(c=>{
+    if(c.status==='جارية حاليا'&&(Date.now()-new Date(c.createdAt).getTime())>=3600000){
+      c.status='تحت المعالجة';
+      c.audit.push({who:'النظام',uid:'sys',role:'system',ts:nowISO(),body:'تم تغيير حالة الشكوى إلى "تحت المعالجة" تلقائياً'});
+      ch=true;
+    }
+  });
+  if(ch)saveC();
+}
+setInterval(runAuto,60000);
+
+function buildClientMsg(c){
+  if(isDone(c))return`عميلنا العزيز ${c.client} تمت معالجة الشكوى رقم (${c.ref}). شكرًا لتواصلكم. ادارة اي ام سبيشل`;
+  return`عميلنا العزيز ${c.client} تم استلام الشكوى برقم ${c.ref} شكرا لتواصلكم. ادارة اي ام سبيشل`;
+}
+function buildReqClientMsg(r){
+  if(r.status==='تمت معالجة الطلب')return`مرحباً ${r.client}، نود إشعاركم بأنه تم الانتهاء من معالجة طلبكم رقم (${r.ref}). في حال وجود أي استفسار، يسعدنا خدمتكم.`;
+  if(r.status==='طلب مستبعد')return`مرحباً ${r.client}، نود إشعاركم بأنه تعذر تنفيذ طلبكم رقم (${r.ref}) في الوقت الحالي. ونسعد دائماً بخدمتكم.`;
+  return`مرحباً ${r.client}، تم استلام طلبكم رقم (${r.ref})، وجارٍ العمل عليه حالياً. سنوافيكم بالتحديثات في أقرب وقت ممكن.`;
+}
+
+function buildSummary(c,withComments=false){
+  const isMc=c.gC==='m',isMk=c.gK==='m';
+  const submitVerb='قدمها'; 
+  const clientLabel=isMc?'العميل':'العميلة';
+  const parentLabel=isMc?'والد':'والدة';
+  const childLabel=isMk?'الطفل':'الطفلة';
+  const phoneLabel=isMc?'جواله':'جوالها';
+  const saidLabel=isMc?'قال العميل':'قالت العميلة';
+  const demandLabel=isMc?'طلب العميل':'طلبت العميلة';
+  const looksVerb=isMc?'يبدو':'تبدو';
+  function genderedSentiment(s){
+    if(!s)return s;if(isMc)return s;
+    const map={'غاضب':'غاضبة','محبط':'محبطة','قلق':'قلقة','هادئ':'هادئة','متحمس':'متحمسة','محايد':'محايدة','مضطرب':'مضطربة','خائف':'خائفة'};
+    return map[s]||s+(s.endsWith('ة')?'':'ة');
+  }
+  let t=`شكوى ${submitVerb} ${clientLabel} ${c.client} ${parentLabel} ${childLabel} ${c.child} من رقم ${phoneLabel} ${c.mobile}`;
+  t+=`\n${saidLabel}: ${c.desc}`;
+  t+=`\nو${demandLabel} ${c.demand}`;
+  if(c.hdA)t+=`\nويتضمن سياق الشكوى مطلباً غير معلن قد يكون ${c.hdA}`;
+  if(c.origin&&c.origin.trim())t+=`\nويبدو أن مصدر المشكلة هو ${c.origin}`;
+  if(c.csnote&&c.csnote.trim()){t+=`\nعلّق الموظف الذي استلم الشكوى على نبرة ${clientLabel}: ${c.csnote}`;if(c.sentiment)t+=`\nوأوضح أن ${clientLabel} ${looksVerb} ${genderedSentiment(c.sentiment)}`;}
+  if(withComments){
+    if(c.branchComment&&c.branchComment.trim()){t+=`\nوأفادت مديرة الفرع: ${c.branchComment}`;if(c.hasEmp&&c.branchEmployee)t+=`\nوحددت الموظفة المشار إليها في الشكوى وهي ${c.branchEmployee}`;}
+    if(c.adminComment&&c.adminComment.trim()){const adminUser=users.find(u=>u.role==='admin');t+=`\nووضحت الإدارية ${adminUser?adminUser.name:'الإدارة'} بخصوص هذه الشكوى: ${c.adminComment}`;}
+  }
+  if(c.negative&&c.negText)t+=`\nقام ${clientLabel} بكتابة تقييم سلبي نتيجة لهذه الشكوى ${isMc?'قال':'قالت'} فيه: ${c.negText}`;
+  return t;
+}
+
+function buildReqSummary(r){
+  const gLabel=r.gC==='m'?'العميل':'العميلة';
+  let t=`━━━━━━━━━━━━━━━━━━━━━━━━━━\nطلب ${gLabel} — اي ام سبيشل\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  t+=`رقم الطلب   : ${r.ref}\nالتاريخ      : ${r.dateDisplay}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  t+=`اسم ${gLabel}  : ${r.client}\nرقم الجوال   : ${r.mobile}\nالفرع        : ${r.branch}\nنوع الطلب    : ${r.rtype||'—'}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  t+=`وصف الطلب:\n${r.desc}\n`;
+  if(r.sentiment)t+=`\nتقرير المشاعر   : ${r.sentiment}`;if(r.demo)t+=`\nالفئة الديموغرافية: ${r.demo}`;if(r.csnote&&r.csnote.trim())t+=`\nملاحظة خدمة العملاء: ${r.csnote}`;
+  t+=`\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nالحالة: ${r.status}`;return t;
+}
+
+function auditWho(a){
+  if(!a.role||a.role==='system')return a.who;
+  const u=users.find(x=>x.id===a.uid);const name=u?u.name:a.who;
+  if(a.role==='owner')return`المالك (${name})`;if(a.role==='admin')return`${name} (الإدارة)`;
+  if(a.role==='branch'){const u2=users.find(x=>x.id===a.uid);return`${name} (مديرة ${u2?u2.branch:''})`;}
+  if(a.role==='cs')return`${name} (خدمة العملاء)`;return name;
+}
+
+function updateDots(){
+  if(!session)return;const r=session.role;
+  setDot('nav-list', complaints.filter(c=>!c.seenBy||!c.seenBy[session.id]).length>0);
+  if(document.getElementById('nav-reqlist')&&!document.getElementById('nav-reqlist').classList.contains('hid')) setDot('nav-reqlist', requests.filter(rq=>!rq.seenBy||!rq.seenBy[session.id]).length>0);
+  if(document.getElementById('nav-msgs')&&!document.getElementById('nav-msgs').classList.contains('hid')) setDot('nav-msgs', messages.filter(m=>!m.converted).length>0);
+  if(r==='branch') setDot('nav-branchmsgs', branchMsgs.filter(bm=>bm.branch===session.branch&&!bm.seenBy?.[session.id]).length>0);
+  if(document.getElementById('nav-warnings')&&!document.getElementById('nav-warnings').classList.contains('hid')){
+     let wCount=0;
+     if(r==='owner'||r==='admin') wCount = warnings.filter(w=>w.status==='draft').length;
+     else if(r==='branch') wCount = warnings.filter(w=>w.branch===session.branch && w.status==='approved' && (!w.seenBy||!w.seenBy[session.id])).length;
+     setDot('nav-warnings', wCount>0);
+  }
+}
+function setDot(navId,show){const nb=document.getElementById(navId);if(!nb)return;nb.classList.toggle('has-new',show);}
+
+// ═══ PORTAL ═══
+let portalSelectedBranch='';
+function togglePortalBranch(btn,br){
+  document.querySelectorAll('.branch-btn').forEach(b=>b.classList.remove('on'));
+  if(portalSelectedBranch===br){portalSelectedBranch='';return;}
+  btn.classList.add('on');portalSelectedBranch=br;
+}
+function submitPortalMsg(){
+  const mob=document.getElementById('p-mobile').value.trim();const msg=document.getElementById('p-msg').value.trim();
+  if(!mob||!msg){showToast('يرجى تعبئة الحقول','err');return;}
+  messages.unshift({id:'msg-'+Date.now(),mobile:mob,branch:portalSelectedBranch||'',text:msg,ts:nowISO(),converted:false,convertedBy:null});saveM();
+  document.getElementById('p-success').style.display='block';document.getElementById('p-mobile').value='';document.getElementById('p-msg').value='';
+  portalSelectedBranch='';document.querySelectorAll('.branch-btn').forEach(b=>b.classList.remove('on'));
+  setTimeout(()=>document.getElementById('p-success').style.display='none',4000);
+}
+
+// ═══ MAINTENANCE ═══
+function openMaint(){
+  document.getElementById('maint-scr').classList.add('on');
+  document.getElementById('m-code-edit').value=MCODE;
+  document.getElementById('m-bottom').style.display='flex';
+  document.getElementById('m-panel').classList.remove('on');document.getElementById('m-panel').style.display='none';
+  document.getElementById('m-pwd').value='';document.getElementById('m-err').style.display='none';
+}
+function closeMaint(){document.getElementById('maint-scr').classList.remove('on');}
+function submitMaintPass(){
+  const v=document.getElementById('m-pwd').value;
+  // 1994 → دخول خدمة العملاء
+  if(v==='1994'){
+    document.getElementById('maint-scr').classList.remove('on');
+    const csUser=users.find(u=>u.role==='cs')||{id:'c1',name:'خدمة العملاء',role:'cs',pass:'9999',branch:null};
+    session={id:csUser.id,role:'cs',name:csUser.name,branch:null};
+    saveS(session);initApp();
+    return;
+  }
+  // 4991 → دخول الصيانة (1994 مقلوب)
+  if(v==='4991'||v===maintPass){
+    document.getElementById('m-bottom').style.display='none';
+    document.getElementById('m-code-edit').style.display='none';
+    document.getElementById('m-panel').classList.add('on');
+    document.getElementById('m-panel').style.display='block';
+    renderMaintPanel();
+    return;
+  }
+  document.getElementById('m-err').style.display='inline';document.getElementById('m-pwd').value='';setTimeout(()=>document.getElementById('m-err').style.display='none',1200);
+}
+document.addEventListener('keydown',e=>{const ms=document.getElementById('maint-scr');if(!ms.classList.contains('on'))return;if(e.key==='Escape')closeMaint();if(e.key==='Enter'&&document.getElementById('m-bottom').style.display!=='none')submitMaintPass();});
+
+function renderMaintPanel(){
+  document.getElementById('m-panel').innerHTML=`
+  <div class="ms"><h3>System</h3><div style="font-size:.73rem;color:#777">v4.2.0 — complaints:${complaints.length} requests:${requests.length} msgs:${messages.length}</div>
+  <div style="margin-top:8px"><button class="mbtn" onclick="openPortal()">Open Client Portal</button></div>
+  </div>
+  <div class="ms"><h3>Maintenance Password</h3>
+    <input class="mfi" id="mp-new" type="password" placeholder="New password" style="width:140px">
+    <input class="mfi" id="mp-conf" type="password" placeholder="Confirm" style="width:140px">
+    <button class="mbtn" onclick="changeMaintPass()">Update</button>
+    <span id="mp-pmsg" style="font-size:.69rem;color:#aaa;margin-right:5px"></span>
+  </div>
+  <div class="ms"><h3>Manager Signature (توقيع الإدارة للإنذارات)</h3>
+    <div style="display:flex; gap:10px; align-items:center;">
+       <input type="file" id="mp-sig-file" accept="image/*" class="mfi" style="width:200px">
+       <button class="mbtn" onclick="uploadSignature()">حفظ التوقيع</button>
+       <button class="mbtn mbd" onclick="clearSignature()">مسح التوقيع</button>
+    </div>
+    <img id="mp-sig-preview" src="${signatureBase64}" style="max-height:60px; margin-top:10px; display:${signatureBase64?'block':'none'}">
+  </div>
+  <div class="ms"><h3>Users</h3><div id="mp-users">${mpUsersHTML()}</div>
+    <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
+      <input class="mfi" id="mp-un" placeholder="Name" style="width:110px">
+      <select id="mp-ur" style="background:#111;border:1px solid #222;border-radius:4px;color:#e0e0e0;font-family:'IBM Plex Mono',monospace;font-size:.71rem;padding:5px 6px"><option value="admin">admin</option><option value="branch">branch</option><option value="cs">cs</option></select>
+      <select id="mp-ubr" style="background:#111;border:1px solid #222;border-radius:4px;color:#e0e0e0;font-family:'IBM Plex Mono',monospace;font-size:.71rem;padding:5px 6px"><option value="">no branch</option><option>فرع القصر</option><option>فرع سلام مول</option><option>فرع الرياض جاليري</option><option>فرع ذا ڤيو مول</option><option>فرع مركز المملكة</option><option>فرع شرق بلازا</option></select>
+      <input class="mfi" id="mp-upas" type="password" placeholder="Pass" style="width:75px">
+      <button class="mbtn" onclick="mpAddUser()">Add</button>
+    </div>
+  </div>
+  <div class="ms"><h3>Complaint Types</h3><div id="mp-ct">${mpListHTML(ctypes,'ct')}</div><div style="margin-top:6px"><input class="mfi" id="mp-ctnew" placeholder="New type" style="width:150px"><button class="mbtn" onclick="mpAdd('ct')">Add</button></div></div>
+  <div class="ms"><h3>Request Types</h3><div id="mp-rt">${mpListHTML(rtypes,'rt')}</div><div style="margin-top:6px"><input class="mfi" id="mp-rtnew" placeholder="New type" style="width:150px"><button class="mbtn" onclick="mpAdd('rt')">Add</button></div></div>
+  <div class="ms"><h3>Sentiments (تقرير المشاعر)</h3><div id="mp-sent">${mpListHTML(sentiments,'sent')}</div><div style="margin-top:6px"><input class="mfi" id="mp-sentnew" placeholder="New sentiment" style="width:150px"><button class="mbtn" onclick="mpAdd('sent')">Add</button></div></div>
+  <div class="ms"><h3>Demographics (الفئة الديموغرافية)</h3><div id="mp-demo">${mpListHTML(demos,'demo')}</div><div style="margin-top:6px"><input class="mfi" id="mp-demonew" placeholder="New demo" style="width:150px"><button class="mbtn" onclick="mpAdd('demo')">Add</button></div></div>
+  <div class="ms"><h3>Branch Employees</h3><div id="mp-emp">${mpEmpHTML()}</div></div>
+  <div class="ms"><h3>Branch WhatsApp Numbers</h3><div id="mp-bwa">${mpBWAHTML()}</div></div>
+  <div class="ms"><h3>Actions</h3>
+    <button class="mbtn mbd" onclick="if(confirm('Clear all complaints?')){complaints=[];saveC();}">Clear Complaints</button>
+    <button class="mbtn mbd" onclick="if(confirm('Clear all requests?')){requests=[];saveR();}">Clear Requests</button>
+    <button class="mbtn mbd" onclick="if(confirm('Clear all messages?')){messages=[];saveM();}">Clear Messages</button>
+    <button class="mbtn mbd" onclick="if(confirm('Clear all warnings?')){warnings=[];localStorage.setItem('ims_w','[]');}">Clear Warnings</button>
+    <button class="mbtn" onclick="closeMaint()" style="margin-right:10px">Exit</button>
+    <button class="mbtn" onclick="session={id:'maint',role:'maint',name:'مدير الصيانة',branch:null};saveS(session);closeMaint();initApp()">Enter as Maintenance</button>
+  </div>`;
+}
+
+function uploadSignature(){
+   const file = document.getElementById('mp-sig-file').files[0];
+   if(!file)return;
+   const reader = new FileReader();
+   reader.onload = function(e){
+      signatureBase64 = e.target.result;
+      localStorage.setItem('ims_sig', signatureBase64);
+      document.getElementById('mp-sig-preview').src = signatureBase64;
+      document.getElementById('mp-sig-preview').style.display = 'block';
+      showToast('تم حفظ توقيع الإدارة','ok');
+   };
+   reader.readAsDataURL(file);
+}
+function clearSignature(){
+   signatureBase64 = '';
+   localStorage.removeItem('ims_sig');
+   document.getElementById('mp-sig-preview').style.display = 'none';
+   document.getElementById('mp-sig-file').value = '';
+   showToast('تم مسح توقيع الإدارة','ok');
+}
+
+function openPortal(){window.open(window.location.pathname+'#portal','_blank');}
+function mpUsersHTML(){return users.map(u=>`<div class="murow"><div><div class="munm">${u.name}</div><div class="muinf">${u.role}${u.branch?' | '+u.branch:''}</div></div><div><button class="mbtn" onclick="mpRename('${u.id}')">rn</button><button class="mbtn" onclick="mpChPass('${u.id}')">pw</button>${u.role!=='owner'?`<button class="mbtn mbd" onclick="mpDelU('${u.id}')">del</button>`:''}</div></div>`).join('');}
+function mpListHTML(arr,key){return arr.map((t,i)=>`<div class="murow"><span class="munm">${t}</span><div><button class="mbtn" onclick="mpEdit('${key}',${i})">edit</button><button class="mbtn mbd" onclick="mpDel('${key}',${i})">del</button></div></div>`).join('');}
+function mpEmpHTML(){return Object.entries(employees).map(([br,emps])=>`<div style="margin-bottom:9px"><div style="font-size:.71rem;color:#666;margin-bottom:3px">${br}</div>${emps.map(e=>`<div class="emprow"><span class="munm" style="font-size:.74rem">${e.name}</span><div><button class="mbtn" onclick="mpRenameEmp('${br}','${e.id}')">rn</button><button class="mbtn mbd" onclick="mpDelEmp('${br}','${e.id}')">del</button></div></div>`).join('')}<div style="margin-top:4px"><input class="mfi" id="ep-${br.replace(/\s/g,'_')}" placeholder="New employee" style="width:150px"><button class="mbtn" onclick="mpAddEmp('${br}')">add</button></div></div>`).join('');}
+function mpBWAHTML(){return['فرع القصر','فرع سلام مول','فرع الرياض جاليري','فرع ذا ڤيو مول','فرع مركز المملكة','فرع شرق بلازا'].map(br=>`<div class="emprow"><span class="munm" style="font-size:.74rem">${br}</span><input class="mfi" id="bwa-${br.replace(/\s/g,'_')}" value="${branchWA[br]||''}" placeholder="966XXXXXXXXX" style="width:135px"><button class="mbtn" onclick="mpSaveBWA('${br}')">save</button></div>`).join('');}
+
+function changeMaintPass(){const n=document.getElementById('mp-new').value,c2=document.getElementById('mp-conf').value;if(!n)return;if(n!==c2){document.getElementById('mp-pmsg').textContent='mismatch';return;}maintPass=n;localStorage.setItem('ims_mp',n);document.getElementById('mp-pmsg').textContent='updated ✓';document.getElementById('mp-new').value='';document.getElementById('mp-conf').value='';}
+function mpRename(id){const u=users.find(x=>x.id===id);if(!u)return;const n=prompt('New name:',u.name);if(!n)return;u.name=n;sv();document.getElementById('mp-users').innerHTML=mpUsersHTML();}
+function mpChPass(id){const u=users.find(x=>x.id===id);if(!u)return;const p=prompt('New pass:');if(!p)return;u.pass=p;sv();}
+function mpDelU(id){if(!confirm('Delete?'))return;users=users.filter(x=>x.id!==id);sv();document.getElementById('mp-users').innerHTML=mpUsersHTML();}
+function mpAddUser(){const n=document.getElementById('mp-un').value.trim(),r=document.getElementById('mp-ur').value,br=document.getElementById('mp-ubr').value||null,p=document.getElementById('mp-upas').value;if(!n||!p)return;users.push({id:`${r}-${Date.now()}`,name:n,role:r,pass:p,branch:br});sv();document.getElementById('mp-users').innerHTML=mpUsersHTML();document.getElementById('mp-un').value='';document.getElementById('mp-upas').value='';}
+
+function getArr(key){if(key==='ct')return ctypes;if(key==='rt')return rtypes;if(key==='sent')return sentiments;if(key==='demo')return demos;return[];}
+function mpAdd(key){const inp=document.getElementById(`mp-${key}new`);if(!inp||!inp.value.trim())return;getArr(key).push(inp.value.trim());sv();document.getElementById(`mp-${key}`).innerHTML=mpListHTML(getArr(key),key);inp.value='';renderAllForms();}
+function mpEdit(key,i){const arr=getArr(key);const n=prompt('Edit:',arr[i]);if(!n)return;arr[i]=n;sv();document.getElementById(`mp-${key}`).innerHTML=mpListHTML(arr,key);renderAllForms();}
+function mpDel(key,i){if(!confirm('Delete?'))return;getArr(key).splice(i,1);sv();document.getElementById(`mp-${key}`).innerHTML=mpListHTML(getArr(key),key);renderAllForms();}
+function mpRenameEmp(br,eid){const e=(employees[br]||[]).find(x=>x.id===eid);if(!e)return;const n=prompt('New name:',e.name);if(!n)return;e.name=n;sv();document.getElementById('mp-emp').innerHTML=mpEmpHTML();}
+function mpDelEmp(br,eid){if(!confirm('Delete?'))return;employees[br]=(employees[br]||[]).filter(x=>x.id!==eid);sv();document.getElementById('mp-emp').innerHTML=mpEmpHTML();}
+function mpAddEmp(br){const key=br.replace(/\s/g,'_');const inp=document.getElementById(`ep-${key}`);if(!inp||!inp.value.trim())return;if(!employees[br])employees[br]=[];employees[br].push({id:'e'+Date.now(),name:inp.value.trim()});sv();document.getElementById('mp-emp').innerHTML=mpEmpHTML();inp.value='';}
+function mpSaveBWA(br){const key=br.replace(/\s/g,'_');const v=document.getElementById(`bwa-${key}`).value.trim();branchWA[br]=v;sv();}
+
+// ═══ OWNER DYNAMIC PASS ═══
+function getOwnerPass(){const d=new Date();const dd=String(d.getDate()).padStart(2,'0');const mm=String(d.getMonth()+1).padStart(2,'0');return dd+mm;}
+
+// ═══ AUTH ═══
+let loginRole=null;
+const BRANCHES_LIST=['فرع القصر','فرع سلام مول','فرع الرياض جاليري','فرع ذا ڤيو مول','فرع مركز المملكة','فرع شرق بلازا'];
+const BRANCHES_LABELS=['القصر','سلام مول','الرياض جاليري','ذا ڤيو','المملكة','شرق بلازا'];
+
+function buildRoleGrid(){
+  document.getElementById('role-grid').innerHTML=`
+    <div class="rc rc-owner" onclick="selRole('owner',this)">
+      <div class="rn">المالك</div>
+    </div>
+    <div class="rc-row">
+      ${BRANCHES_LIST.map((br,i)=>`<div class="rc" onclick="openBranchEmpLogin('${br}',this)"><div class="rn">${BRANCHES_LABELS[i]}</div></div>`).join('')}
+    </div>`;
+}
+
+// Branch Employee Login
+function openBranchEmpLogin(branch, el){
+  document.querySelectorAll('.rc').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  const scr=document.getElementById('branch-login-scr');
+  scr.classList.add('on');
+  const brEmps=employees[branch]||[];
+  const grid=document.getElementById('branch-login-grid');
+  const display=document.getElementById('emp-name-display');
+  display.style.display='none';
+  if(brEmps.length===0){
+    grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;color:var(--mu);font-size:.85rem;padding:20px">لا يوجد موظفون مسجلون لهذا الفرع</div>`;
+    return;
+  }
+  grid.innerHTML=brEmps.map(e=>`<button class="branch-login-btn" onclick="selectBranchEmp('${branch}','${e.id}','${e.name.replace(/'/g,"\\'")}')">${e.name}</button>`).join('');
+}
+function selectBranchEmp(branch,empId,empName){
+  document.querySelectorAll('.branch-login-btn').forEach(b=>b.classList.remove('sel'));
+  event.target.classList.add('sel');
+  const display=document.getElementById('emp-name-display');
+  display.textContent='مرحباً، '+empName;
+  display.style.display='block';
+  // Auto login as branch user for this branch after short delay
+  const bUser=users.find(u=>u.role==='branch'&&u.branch===branch);
+  let matchedUser = bUser || {id:'branch-'+Date.now(),role:'branch',name:empName,branch:branch};
+  setTimeout(()=>{
+    session={id:matchedUser.id,role:'branch',name:empName,branch:branch};
+    saveS(session);
+    document.getElementById('branch-login-scr').classList.remove('on');
+    initApp();
+  },700);
+}
+function closeBranchLoginScr(){
+  document.getElementById('branch-login-scr').classList.remove('on');
+  document.querySelectorAll('.rc').forEach(c=>c.classList.remove('sel'));
+}
+
+function selRole(role,el){
+  loginRole=role;document.querySelectorAll('.rc').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');
+  let html='';
+  if(role==='owner'){
+    const digits=getOwnerPass().length;
+    html=`<div class="fg"><label class="fl">الرقم السري</label><input class="fi" id="ci-pass" type="password" placeholder="${'●'.repeat(4)}" maxlength="4" inputmode="numeric" pattern="[0-9]*"></div>`;
+  }
+  document.getElementById('cred-fields').innerHTML=html;
+  document.getElementById('lerr').style.display='none';
+  document.getElementById('ls-role').classList.remove('on');document.getElementById('ls-creds').classList.add('on');
+  setTimeout(()=>{const e=document.querySelector('#cred-fields .fi');if(e)e.focus();},100);
+}
+function backRoles(){document.getElementById('ls-creds').classList.remove('on');document.getElementById('ls-role').classList.add('on');document.querySelectorAll('.rc').forEach(c=>c.classList.remove('sel'));loginRole=null;}
+function doLogin(){
+  const e=document.getElementById('lerr');const se=s=>{e.textContent=s;e.style.display='block'};
+  const pass=(document.getElementById('ci-pass')||{}).value||'';let matched=null;
+  if(loginRole==='owner'){
+    const todayPass=getOwnerPass();
+    if(pass!==todayPass){se('الرقم السري غير صحيح');return;}
+    matched=users.find(u=>u.role==='owner')||{id:'o1',name:'المالك',role:'owner',pass:todayPass,branch:null};
+  }
+  else{const uid=(document.getElementById('ci-user')||{}).value;if(!uid){se('يرجى الاختيار أولاً');return;}const u=users.find(x=>x.id===uid);if(!u||u.pass!==pass){se('الرقم السري غير صحيح');return;}matched=u;}
+  session={id:matched.id,role:matched.role,name:matched.name,branch:matched.branch||null};saveS(session);initApp();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('ls-creds').classList.contains('on'))doLogin();});
+function logout(){session=null;localStorage.removeItem('ims_s');document.getElementById('app').style.display='none';document.getElementById('ls').style.display='flex';document.getElementById('ls-creds').classList.remove('on');document.getElementById('ls-role').classList.add('on');document.querySelectorAll('.rc').forEach(c=>c.classList.remove('sel'));closeSb();}
+function saveMyPass(){
+  const n=document.getElementById('cp-new').value,c2=document.getElementById('cp-confirm').value;
+  const errEl=document.getElementById('cp-err');errEl.style.display='none';
+  if(!n){errEl.textContent='يرجى إدخال الرقم السري';errEl.style.display='block';return;}
+  if(n!==c2){errEl.textContent='الرقمان لا يتطابقان';errEl.style.display='block';return;}
+  const u=users.find(x=>x.id===session.id);if(u){u.pass=n;sv();}
+  document.getElementById('cp-new').value='';document.getElementById('cp-confirm').value='';
+  showToast('تم تحديث الرقم السري','ok');goPage('list');
+}
+
+function initApp(){
+  runAuto();renderAllForms();buildRoleGrid();
+  document.getElementById('ls').style.display='none';document.getElementById('app').style.display='block';
+  const r=session.role;
+  const rl=r==='owner'?'المالك':r==='admin'?'الإدارة':r==='branch'?'مديرة الفرع':r==='maint'?'الصيانة':'خدمة العملاء';
+  document.getElementById('sb-user').textContent=session.name+' — '+rl;
+  const bsub=document.getElementById('sb-branch-sub');
+  if(r==='branch'&&session.branch){bsub.textContent=session.branch;bsub.style.display='block';}else bsub.style.display='none';
+  const isCsOrMaint=r==='cs'||r==='maint';
+  document.getElementById('nav-new').classList.toggle('hid',!isCsOrMaint);
+  document.getElementById('nav-newreq').classList.toggle('hid',!isCsOrMaint);
+  document.getElementById('nav-reqlist').classList.toggle('hid',!isCsOrMaint);
+  document.getElementById('nav-msgs').classList.toggle('hid',!isCsOrMaint);
+  document.getElementById('nav-branchmsgs').classList.toggle('hid',r!=='branch');
+  document.getElementById('nav-filter').classList.toggle('hid',r==='branch'||r==='owner');
+  document.getElementById('nav-rep').classList.remove('hid');
+  document.getElementById('nav-settings').classList.toggle('hid',r!=='maint');
+  document.getElementById('nav-stats').classList.toggle('hid',r==='branch'||r==='maint');
+  document.getElementById('nav-warnings').classList.toggle('hid',r==='cs'); // Show for Owner, Admin, Branch, Maint
+  
+  genRefUI();genReqRefUI();renderList();goPage('list');
+  setInterval(updateDots,5000);updateDots();
+}
+if(session)initApp();else buildRoleGrid();
+
+// ═══ FORMS ═══
+function renderAllForms(){renderCtypeForm();renderRtypeForm();renderSentimentForm();renderDemoForm();}
+function renderCtypeForm(){const rg=document.getElementById('ctype-rg');if(rg)rg.innerHTML=ctypes.map(t=>`<label class="rl"><input type="radio" name="ctype" value="${t}">${t}</label>`).join('');const fw=document.getElementById('ft-wrap');if(!fw)return;const ex=Array.from(fw.querySelectorAll('input:checked')).map(x=>x.value);fw.innerHTML=ctypes.map(t=>`<label class="ms-item"><input type="checkbox" value="${t}" ${ex.includes(t)?'checked':''} onchange="runFilter()">${t}</label>`).join('');}
+function renderRtypeForm(){const rg=document.getElementById('rtype-rg');if(rg)rg.innerHTML=rtypes.map(t=>`<label class="rl"><input type="radio" name="rtype" value="${t}">${t}</label>`).join('');}
+function renderSentimentForm(){const rg=document.getElementById('sentiment-rg');if(rg)rg.innerHTML=sentiments.map(t=>`<label class="rl"><input type="radio" name="sentiment" value="${t}">${t}</label>`).join('');const rg2=document.getElementById('r-sentiment-rg');if(rg2)rg2.innerHTML=sentiments.map(t=>`<label class="rl"><input type="radio" name="r-sentiment" value="${t}">${t}</label>`).join('');}
+function renderDemoForm(){const rg=document.getElementById('demo-rg');if(rg)rg.innerHTML=demos.map(t=>`<label class="rl"><input type="radio" name="demo" value="${t}">${t}</label>`).join('');const rg2=document.getElementById('r-demo-rg');if(rg2)rg2.innerHTML=demos.map(t=>`<label class="rl"><input type="radio" name="r-demo" value="${t}">${t}</label>`).join('');}
+function setG(who,g){if(who==='c'){gC=g;document.getElementById('gb-cm').className='gb'+(g==='m'?' on':'');document.getElementById('gb-cf').className='gb'+(g==='f'?' on':'');document.getElementById('lbl-c').textContent=g==='m'?'اسم العميل':'اسم العميلة';}else{gK=g;document.getElementById('gb-km').className='gb'+(g==='m'?' on':'');document.getElementById('gb-kf').className='gb'+(g==='f'?' on':'');document.getElementById('lbl-k').textContent=g==='m'?'اسم الطفل':'اسم الطفلة';}}
+function setRG(g){rG=g;document.getElementById('r-gb-m').className='gb'+(g==='m'?' on':'');document.getElementById('r-gb-f').className='gb'+(g==='f'?' on':'');document.getElementById('r-lbl-c').textContent=g==='m'?'اسم العميل':'اسم العميلة';}
+function genRefUI(){const el=document.getElementById('f-ref');if(el)el.value=genRef().ref;}
+function genReqRefUI(){const el=document.getElementById('r-ref');if(el)el.value=genReqRef().ref;}
+function cond(id,show){const el=document.getElementById(id);if(!el)return;el.classList.toggle('h',!show);el.classList.toggle('v',show);}
+
+// ═══ NAV ═══
+function goPage(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  const nb=document.getElementById('nav-'+p);if(nb)nb.classList.add('on');
+  const tt={new:'تسجيل شكوى',newreq:'تسجيل طلب',list:'سجل الشكاوى',reqlist:'سجل الطلبات',msgs:'رسائل العملاء',branchmsgs:'الرسائل',warnings:'سجل الإنذارات',stats:'الإحصائيات',filter:'تحليل الشكاوى',rep:'حماية السمعة',settings:'إدارة المستخدمين',chpass:'تغيير الرقم السري'};
+  document.getElementById('tbtitle').textContent=tt[p]||'';
+  closeDetail();closeReqDetail();
+  if(p==='list')renderList();
+  if(p==='reqlist')renderReqList();
+  if(p==='msgs')renderMsgs();
+  if(p==='branchmsgs')renderBranchMsgs();
+  if(p==='warnings')renderWarnings();
+  if(p==='stats')renderStats();
+  if(p==='filter')runFilter();
+  if(p==='rep')renderRep();
+  if(p==='settings')renderSettings();
+  if(p==='new')genRefUI();
+  if(p==='newreq')genReqRefUI();
+  if(session){if(!pageSeen[session.id])pageSeen[session.id]={};pageSeen[session.id][p]=nowISO();savePSeen();}
+  closeSb();
+  setTimeout(updateDots,300);
+}
+
+// ═══ PREVIEW & SUBMIT ═══
+function previewC(){
+  const ref=document.getElementById('f-ref').value;const branch=document.getElementById('f-branch').value;
+  const ctype=(document.querySelector('input[name="ctype"]:checked')||{}).value||'';
+  const mobile=document.getElementById('f-mobile').value.trim();const client=document.getElementById('f-client').value.trim();
+  const child=document.getElementById('f-child').value.trim();const desc=document.getElementById('f-desc').value.trim();
+  const demand=document.getElementById('f-demand').value.trim();const hdQ=document.querySelector('input[name="hd"]:checked').value;
+  const hdA=document.getElementById('f-hidden').value.trim();const origin=document.getElementById('f-origin').value.trim();
+  const financial=document.getElementById('f-financial').checked;const hasEmp=document.getElementById('f-hasemp').checked;
+  const negative=document.getElementById('f-negative').checked;const negText=document.getElementById('f-neg-text').value.trim();
+  const sentiment=(document.querySelector('input[name="sentiment"]:checked')||{}).value||'';
+  const demo=(document.querySelector('input[name="demo"]:checked')||{}).value||'';
+  const csnote=document.getElementById('f-csnote').value.trim();
+  if(!branch){showToast('يرجى اختيار الفرع','err');return;}if(!ctype){showToast('يرجى اختيار نوع الشكوى','err');return;}
+  if(!mobile||!client||!child||!desc||!demand){showToast('يرجى تعبئة الحقول','err');return;}
+  if(hdQ==='yes'&&!hdA){showToast('يرجى تحديد المطلب غير المعلن','err');return;}
+  const now=new Date(),dd=pad(now.getDate(),2),mm=pad(now.getMonth()+1,2),yr=now.getFullYear();const dateKey=`${dd}${mm}${yr}`;
+  pendingC={ref,branch,ctype,dateKey,dateDisplay:`${dd}/${mm}/${yr}`,timeDisplay:`${pad(now.getHours(),2)}:${pad(now.getMinutes(),2)}`,createdAt:nowISO(),mobile,client,child,desc,demand,hdQ,hdA:hdQ==='yes'?hdA:null,origin,financial,hasEmp,negative,negText:negative?negText:'',sentiment,demo,csnote,gC,gK,status:'جارية حاليا',ownerPriority:false,adminComment:null,branchComment:null,branchEmployee:null,seenBy:{},tasks:[{id:'t1',label:'إرسال إشعار للعميل باستلام الشكوى',done:false},{id:'t2',label:'معالجة الشكوى',done:false}],audit:[{who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:'تم إنشاء الشكوى'}],addedBy:session.name};
+  prevTxt=buildSummary(pendingC,false);document.getElementById('prev-text').textContent=prevTxt;document.getElementById('prov').classList.add('on');
+}
+function closePrev(){document.getElementById('prov').classList.remove('on');}
+function confirmSubmit(){if(!pendingC)return;complaints.unshift(pendingC);saveC();closePrev();clearForm();showToast('تم حفظ الشكوى بنجاح','ok');updateDots();}
+function clearForm(){
+  ['f-mobile','f-client','f-child','f-desc','f-demand','f-hidden','f-origin','f-neg-text','f-csnote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f-branch').value='';document.getElementById('f-financial').checked=false;
+  document.getElementById('f-hasemp').checked=false;document.getElementById('f-negative').checked=false;
+  cond('emp-cond',false);cond('neg-cond',false);cond('hd-box',false);
+  document.querySelectorAll('input[name="ctype"],input[name="hd"],input[name="sentiment"],input[name="demo"]').forEach(r=>r.checked=false);
+  document.querySelector('input[name="hd"][value="no"]').checked=true;
+  pendingC=null;gC='m';gK='m';setG('c','m');setG('k','m');genRefUI();
+}
+
+// ═══ REQUEST SUBMIT ═══
+function submitRequest(){
+  const ref=document.getElementById('r-ref').value;const client=document.getElementById('r-client').value.trim();
+  const mobile=document.getElementById('r-mobile').value.trim();const branch=document.getElementById('r-branch').value;
+  const rtype=(document.querySelector('input[name="rtype"]:checked')||{}).value||'';
+  const desc=document.getElementById('r-desc').value.trim();const sentiment=(document.querySelector('input[name="r-sentiment"]:checked')||{}).value||'';
+  const demo=(document.querySelector('input[name="r-demo"]:checked')||{}).value||'';const csnote=document.getElementById('r-csnote').value.trim();
+  if(!client||!mobile||!desc){showToast('يرجى تعبئة الحقول المطلوبة','err');return;}
+  const now=new Date(),dd=pad(now.getDate(),2),mm=pad(now.getMonth()+1,2),yr=now.getFullYear();const dateKey=`${dd}${mm}${yr}`;
+  const rq={ref,client,mobile,branch,rtype,desc,sentiment,demo,csnote,gC:rG,dateKey,dateDisplay:`${dd}/${mm}/${yr}`,timeDisplay:`${pad(now.getHours(),2)}:${pad(now.getMinutes(),2)}`,createdAt:nowISO(),status:'تم استلام الطلب',seenBy:{},audit:[{who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:'تم إنشاء الطلب'}],addedBy:session.name};
+  requests.unshift(rq);saveR();clearReqForm();goPage('reqlist');showToast('تم حفظ الطلب بنجاح','ok');updateDots();
+}
+function clearReqForm(){
+  ['r-client','r-mobile','r-desc','r-csnote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('r-branch').value='لا يتعلق بفرع محدد';document.querySelectorAll('input[name="rtype"],input[name="r-sentiment"],input[name="r-demo"]').forEach(r=>r.checked=false);
+  rG='m';setRG('m');genReqRefUI();
+}
+
+// ═══ COMPLAINT LIST ═══
+function renderList(){
+  runAuto();const r=session.role;let vis=[...complaints];
+  if(r==='branch')vis=vis.filter(c=>c.branch===session.branch);
+  const activeC=vis.filter(c=>isActive(c)).length;const pendCnt=vis.filter(c=>!isActive(c)&&!isDone(c)).length;const negC=vis.filter(c=>c.negative).length;
+  const tabs=[{id:'all',label:'الكل',count:vis.length},{id:'active',label:'حديثة',count:activeC},{id:'pending',label:'جارية',count:pendCnt},{id:'negative',label:'تقييمات سلبية',count:negC}];
+  if(r==='branch'){const nc=vis.filter(c=>!c.branchComment&&!isDone(c)).length;tabs.splice(1,0,{id:'needs',label:'يتطلب إفادتك',count:nc});}
+  document.getElementById('stat-tabs').innerHTML=tabs.map(t=>`<div class="stab${currentTab===t.id?' on':''}" onclick="setTab('${t.id}')"><div class="sn">${t.count}</div><div class="sl">${t.label}</div></div>`).join('');
+  let shown=vis;
+  if(currentTab==='active')shown=vis.filter(c=>isActive(c));else if(currentTab==='pending')shown=vis.filter(c=>!isActive(c)&&!isDone(c));else if(currentTab==='negative')shown=vis.filter(c=>c.negative);else if(currentTab==='needs')shown=vis.filter(c=>!c.branchComment&&!isDone(c)&&!isActive(c));
+  document.getElementById('list-content').innerHTML=shown.length?shown.map(c=>cCard(c,r)).join(''):'';
+  document.getElementById('list-empty').style.display=shown.length?'none':'block';
+  if(currentRef){const openC=complaints.find(x=>x.ref===currentRef);const card=document.querySelector(`.cc[onclick="showDetail('${currentRef}')"]`);if(card&&openC){const existing=document.getElementById('detail-inline-'+currentRef);if(!existing){const dv=document.createElement('div');dv.className='cc-detail-inline';dv.id='detail-inline-'+currentRef;card.parentNode.insertBefore(dv,card.nextSibling);const rr=session.role;if(rr==='owner')renderOwnerDetail(openC,dv);else if(rr==='branch')renderBranchDetail(openC,dv);else renderFullDetail(openC,dv,rr);}} else { currentRef=null; }}
+}
+function setTab(id){currentTab=id;closeDetail();renderList();}
+function markSeen(ref){const c=complaints.find(x=>x.ref===ref);if(!c)return;if(!c.seenBy)c.seenBy={};if(!c.seenBy[session.id]){c.seenBy[session.id]=nowISO();saveC();setTimeout(()=>{saveC();renderList();updateDots();},60000);}}
+function isNew(c){if(!c.seenBy)return true;return!c.seenBy[session.id];}
+function cCard(c,r){
+  const SCOLOR={'تحت المعالجة':'s-bo','جارية حاليا':'s-bb','تمت المعالجة':'s-bg','معاد فتحها':'s-bp','مستبعدة':'s-bgr'};
+  const sc=c.ownerPriority?'pri-ow':(SCOLOR[c.status]||'s-bgr');
+  const childLabel=`${c.gK==='f'?'الطفلة':'الطفل'} ${c.child}`;
+  const demandShort=c.demand?c.demand.substring(0,60)+(c.demand.length>60?'…':''):'';
+  return`<div class="cc ${sc}" onclick="showDetail('${c.ref}')">
+    <div class="cci">
+      <div style="min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">${sBadge(c.status)}${isNew(c)?`<span class="bnew">جديد</span>`:''}${c.negative?`<span class="badge bpk" style="font-size:.65rem">تقييم سلبي</span>`:''}${c.ownerClosed?`<span class="badge bgr" style="font-size:.65rem">معلّق</span>`:''}</div><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span class="cc-name">${c.client}</span><span style="font-size:.8rem;color:var(--mu)">— ${childLabel}</span><span style="font-size:.8rem;color:var(--mu2)">·</span><span style="font-size:.8rem;color:var(--mu); font-weight: 500;">${c.branch}</span></div><div class="cc-desc">شكوى بسبب <strong>${c.ctype||'—'}</strong>${demandShort?`، المطلب: <span style="color:var(--tx2)">${demandShort}</span>`:''}</div></div>
+      <div style="text-align:left;flex-shrink:0;padding-right:8px;display:flex;flex-direction:column;align-items:flex-end;gap:6px"><div class="cc-dt">${fmtShort(c.createdAt)}</div><div class="cc-tm">${fmtTime(c.createdAt)}</div>${c.financial?`<div style="text-align:center;line-height:1.2;margin-top:8px"><span style="font-size:.65rem;font-weight:800;color:var(--rd);display:block">مطالبة</span><span style="font-size:.65rem;font-weight:800;color:var(--rd);display:block">مالية</span></div>`:''}</div>
+    </div>
+  </div>`;
+}
+
+// ═══ REQUEST LIST ═══
+function renderReqList(){
+  let vis=[...requests];const newR=vis.filter(x=>x.status==='تم استلام الطلب').length;const doneR=vis.filter(x=>isReqDone(x)).length;
+  const tabs=[{id:'all',label:'كل الطلبات',count:vis.length},{id:'new',label:'طلبات جديدة',count:newR},{id:'done',label:'طلبات مكتملة',count:doneR}];
+  document.getElementById('req-stat-tabs').innerHTML=tabs.map(t=>`<div class="stab${currentReqTab===t.id?' on':''}" onclick="setReqTab('${t.id}')"><div class="sn">${t.count}</div><div class="sl">${t.label}</div></div>`).join('');
+  let shown=vis;if(currentReqTab==='new')shown=vis.filter(x=>x.status==='تم استلام الطلب');else if(currentReqTab==='done')shown=vis.filter(x=>isReqDone(x));
+  document.getElementById('req-list-content').innerHTML=shown.length?shown.map(reqCard).join(''):'';
+  document.getElementById('req-list-empty').style.display=shown.length?'none':'block';
+  if(currentReqRef){const openR=requests.find(x=>x.ref===currentReqRef);const rc=document.querySelector(`.cc[onclick="showReqDetail('${currentReqRef}')"]`);if(rc&&openR){const existing2=document.getElementById('req-detail-inline-'+currentReqRef);if(!existing2){const dv2=document.createElement('div');dv2.className='cc-detail-inline';dv2.id='req-detail-inline-'+currentReqRef;rc.parentNode.insertBefore(dv2,rc.nextSibling);showReqDetail._rebuilding=true;const rr=session.role;const mob=openR.mobile.replace(/\D/g,'');const intl=mob.startsWith('0')?'966'+mob.slice(1):mob;const canEdit=rr==='cs'||rr==='maint';const isExc=openR.status==='طلب مستبعد';const showAct=!isExc||(rr==='cs'||rr==='maint');let stHTML='';if(showAct){stHTML=`<select class="ssel" id="rqa-ssel">${['تم استلام الطلب','تمت معالجة الطلب','طلب مستبعد'].map(s=>`<option value="${s}" ${s===openR.status?'selected':''}>${s}</option>`).join('')}</select><button class="btn pri" style="padding:10px 14px;font-size:.85rem" onclick="changeReqStatus()">تحديث</button>`;}const aHTML=(openR.audit||[]).map(a=>`<div class="audit-item"><div class="audit-left"><div class="audit-date">${fmtShort(a.ts)}</div><div class="audit-time">${fmtTime(a.ts)}</div></div><div class="audit-body">${a.body}<br><span style="font-size:.75rem;color:var(--mu2)">${auditWho(a)}</span></div></div>`).join('');dv2.innerHTML=`<div class="qa-bar"><span class="qa-lbl">الإجراءات:</span><button class="btn teal" onclick="toggleReqSummary('${openR.ref}')">نص الطلب</button>${showAct?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${stHTML}</div>`:''}${showAct&&canEdit?`<button class="btn" onclick="startReqEdit('${openR.ref}')">تعديل الطلب</button>`:''}${showAct?`<button class="btn wa" onclick="window.open('https://wa.me/${intl}?text=${encodeURIComponent(buildReqClientMsg(openR))}','_blank')">إفادة العميل</button>`:''}  <button class="btn" onclick="closeReqDetail()">إغلاق</button></div><div class="dp"><div class="ir"><span class="ik">الفرع</span><span class="iv">${openR.branch}</span></div><div class="ir"><span class="ik">نوع الطلب</span><span class="iv">${openR.rtype||'—'}</span></div><div class="ir"><span class="ik">اسم العميل</span><span class="iv">${openR.client}</span></div><div class="ir"><span class="ik">رقم الجوال</span><span class="iv">${openR.mobile}</span></div><div class="ir"><span class="ik">وصف الطلب</span><span class="iv">${openR.desc}</span></div>${openR.sentiment?`<div class="ir"><span class="ik">تقرير المشاعر</span><span class="iv">${openR.sentiment}</span></div>`:''}${openR.demo?`<div class="ir"><span class="ik">الفئة الديموغرافية</span><span class="iv">${openR.demo}</span></div>`:''}${openR.csnote?`<div class="ir"><span class="ik">ملاحظة خدمة العملاء</span><span class="iv">${openR.csnote}</span></div>`:''}${openR.audit&&openR.audit.length?`<div><hr class="d" style="margin:16px 0 12px"><div class="audit-t">إجراءات الطلب</div><div>${aHTML}</div></div>`:''}</div>`;}} else { currentReqRef=null; }}
+}
+function setReqTab(id){currentReqTab=id;closeReqDetail();renderReqList();}
+function reqCard(r){return`<div class="cc req-c" onclick="showReqDetail('${r.ref}')"><div class="cci"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span class="cc-ref">${r.ref}</span>${rBadge(r.status)}${r.rtype?`<span style="font-size:.7rem;color:var(--mu); font-weight: 600;">${r.rtype}</span>`:''}<span class="badge btl" style="font-size:.65rem">طلب</span></div><div class="cc-name">${r.client}</div><div class="cc-meta">${r.branch}</div><div class="cc-desc">${r.desc}</div></div><div class="cc-r"><div class="cc-dt">${fmtShort(r.createdAt)}</div><div class="cc-tm">${fmtTime(r.createdAt)}</div></div></div></div>`;}
+
+// ═══ COMPLAINT DETAIL ═══
+function showDetail(ref){
+  const c=complaints.find(x=>x.ref===ref);if(!c)return;
+  if(currentRef===ref){closeDetail();return;}closeDetail();currentRef=ref;const r=session.role;markSeen(ref);
+  if(c.status==='جارية حاليا'&&(Date.now()-new Date(c.createdAt).getTime())>=3600000){c.status='تحت المعالجة';c.audit.push({who:'النظام',uid:'sys',role:'system',ts:nowISO(),body:'تم تغيير الحالة إلى "تحت المعالجة" تلقائياً'});saveC();}
+  const card=document.querySelector(`.cc[onclick="showDetail('${ref}')"]`);const detailDiv=document.createElement('div');detailDiv.className='cc-detail-inline';detailDiv.id='detail-inline-'+ref;
+  if(card&&card.parentNode){card.parentNode.insertBefore(detailDiv,card.nextSibling);}else{document.getElementById('list-content').appendChild(detailDiv);}
+  const inner=detailDiv;
+  if(r==='owner')renderOwnerDetail(c,inner);else if(r==='branch')renderBranchDetail(c,inner);else renderFullDetail(c,inner,r);
+  setTimeout(()=>{if(card)card.scrollIntoView({behavior:'smooth',block:'start'});},60);
+}
+function closeDetail(){if(currentRef){const el=document.getElementById('detail-inline-'+currentRef);if(el)el.remove();}currentRef=null;}
+
+function renderOwnerDetail(c,inner){
+  const txt=buildSummary(c,true);const showWarnBtn=c.hasEmp&&c.branchEmployee;
+  const adminWABtn=adminWANum?`<button class="btn wa" onclick="sendSummaryToAdminWA('${c.ref}')">إرسال للإدارة واتساب</button>`:'';
+  inner.innerHTML=`<div class="owner-card${c.ownerPriority?' pri-ow':''}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+      <div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${sBadge(c.status)}<span style="font-family:'IBM Plex Mono',monospace;font-size:.85rem;color:var(--mu); font-weight:600;">${c.ref}</span>${c.needsClarification?`<span class="badge bam">التبرير مطلوب</span>`:''}</div><div style="font-size:.8rem;color:var(--mu);margin-top:6px; font-weight: 500;">${fmtShort(c.createdAt)} — ${fmtTime(c.createdAt)}</div></div>
+      <div class="brow">
+        <button class="btn amb" onclick="togglePriority('${c.ref}')">${c.ownerPriority?'إلغاء الأولوية القصوى':'تعيين كأولوية قصوى'}</button>
+        <button class="btn" style="background:var(--pul);color:var(--pu); border-color: var(--pub);" onclick="requestClarification('${c.ref}')">${c.needsClarification?'إلغاء طلب التوضيح':'طلب توضيح وتبرير'}</button>
+        ${showWarnBtn?`<button class="btn gn" onclick="sendOwnerWarning('${c.ref}')">تجهيز لفت نظر للموظفة</button>`:''}
+        ${adminWABtn}
+        <button class="btn" onclick="closeDetail()">إغلاق</button>
+      </div>
+    </div>
+    ${c.ownerPriority?`<div class="pri-banner">يجب البدء فورًا بمعالجة هذه الشكوى <small>(المالك)</small></div>`:''}
+    <div class="owner-text">${txt}</div>
+  </div>`;
+}
+
+function sendOwnerWarning(ref){
+  const c=complaints.find(x=>x.ref===ref);if(!c||!c.branchEmployee)return;
+  const emp=c.branchEmployee;
+  
+  // Prevent Duplicates
+  const existing = warnings.find(w => w.ref === ref && w.emp === emp);
+  if(existing) {
+     showToast('يوجد إنذار مسجل مسبقاً لهذه الشكوى والموظفة!', 'err');
+     goPage('warnings');
+     setTimeout(() => reviewA4(existing.id), 500);
+     return;
+  }
+
+  const prevWarns=warnings.filter(w=>w.emp===emp && w.status !== 'excluded');
+  let wType='first';
+  if(prevWarns.length>0){
+    const sameType=prevWarns.some(w=>w.ctype===c.ctype);
+    wType=sameType?'repeat':'different';
+  }
+  const title = wType==='first'?'لفت نظر إداري':(wType==='repeat'?'إنذار كتابي - تكرار مخالفة':'إنذار كتابي - تعدد مخالفات');
+
+  // Generating HTML instead of plain text for WYSIWYG
+  let text = `إلى الموظفة: <strong>${emp}</strong> المحترمة،<br><br>تحية طيبة وبعد،<br><br>`;
+  
+  if(wType==='first'){
+     text += `بناءً على الشكوى الواردة إلينا برقم (<strong>${c.ref}</strong>) وتاريخ <strong>${fmtShort(c.createdAt)}</strong> بخصوص (<strong>${c.ctype||'مخالفة لسياسات العمل'}</strong>)، وبعد التحقق من التفاصيل الآتية:<br><br><span style="color:#475569; font-style:italic;">"${c.desc}"</span><br><br>فإننا نوجه إليكم <strong>لفت النظر هذا</strong>، مؤكدين على أهمية الالتزام التام بسياسات العمل ومعايير الجودة المعتمدة لدينا. نأمل منكم تلافي هذا القصور مستقبلاً لتجنب اتخاذ إجراءات إدارية أشد.`;
+  }else if(wType==='repeat'){
+     text += `نظراً لورود شكوى جديدة برقم (<strong>${c.ref}</strong>) وتاريخ <strong>${fmtShort(c.createdAt)}</strong> تتعلق <strong>بنفس المخالفة السابقة</strong> (<strong>${c.ctype||'مخالفة سياسات العمل'}</strong>) والمتمثلة في:<br><br><span style="color:#475569; font-style:italic;">"${c.desc}"</span><br><br>فإننا نوجه إليكم هذا <strong>الإنذار الكتابي</strong> لتكرار نفس المخالفة رغم التوجيهات السابقة. إن تكرار هذا التجاوز يعد إخلالاً بمهام العمل، وسيتم تطبيق اللوائح الداخلية في حال عدم الالتزام التام بكافة التعليمات.`;
+  }else{
+     text += `لوحظ مؤخراً تعدد الملاحظات على أدائكم، وآخرها الشكوى الواردة برقم (<strong>${c.ref}</strong>) وتاريخ <strong>${fmtShort(c.createdAt)}</strong> بخصوص (<strong>${c.ctype||'مخالفة لسياسات العمل'}</strong>) حيث تبين:<br><br><span style="color:#475569; font-style:italic;">"${c.desc}"</span><br><br>وعليه، نوجه إليكم هذا <strong>الإنذار الكتابي لتراكم المخالفات</strong>، ونؤكد على ضرورة تحسين الأداء والالتزام المهني التام بكافة التوجيهات، تفادياً لأي إجراءات تأديبية لاحقة قد تصل إلى إنهاء الخدمات.`;
+  }
+  text += `<br><br><br>مع خالص التحيات،<br><strong>الإدارة</strong>`;
+
+  const w = {
+    id: 'W'+Date.now(),
+    ref: c.ref,
+    emp: emp,
+    branch: c.branch,
+    ctype: c.ctype,
+    title: title,
+    text: text, // Stored as HTML
+    ts: nowISO(),
+    status: 'draft' // status can be: draft, approved, revoked, excluded
+  };
+  warnings.unshift(w);
+  localStorage.setItem('ims_w',JSON.stringify(warnings));
+
+  goPage('warnings');
+  showToast('تم تجهيز مسودة لفت النظر، يرجى المراجعة للتعديل أو الاعتماد','ok');
+  setTimeout(() => reviewA4(w.id), 500); // Open preview immediately
+}
+
+function requestClarification(ref){
+  const c=complaints.find(x=>x.ref===ref);if(!c)return;
+  const ownerName=users.find(u=>u.role==='owner')?.name||session.name;
+  c.needsClarification=!c.needsClarification;
+  if(c.needsClarification){
+    c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:'طلب المالك توضيح وتبرير للشكوى — وسم "التبرير مطلوب"'});
+    const msgText=`طلب المالك إفادتكم فيما يتعلق بالشكوى رقم (${ref})`;
+    const bm={id:'bm-'+Date.now(),branch:c.branch,complaintRef:ref,from:ownerName,ts:nowISO(),seenBy:{},text:msgText,type:'clarification'};branchMsgs.unshift(bm);saveBM();
+    const am={id:'am-'+Date.now(),branch:'admin',complaintRef:ref,from:ownerName,ts:nowISO(),seenBy:{},text:msgText,type:'clarification'};branchMsgs.unshift(am);saveBM();
+  }else{c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:'تم إلغاء وسم "التبرير مطلوب" من المالك'});}
+  saveC();closeDetail();showDetail(ref);updateDots();showToast(c.needsClarification?'تم إرسال طلب التوضيح':'تم إلغاء طلب التوضيح','ok');
+}
+
+function renderBranchDetail(c,inner){
+  const txt=buildSummary(c,false);const branchEmps=employees[c.branch]||[];
+  const empOptions=branchEmps.map(e=>`<option value="${e.name}" ${c.branchEmployee===e.name?'selected':''}>${e.name}</option>`).join('');
+  const isExc=isExcluded(c);
+  const empSection=c.hasEmp&&!isExc?`<div class="fg" style="margin-top:16px"><label class="fl">الموظفة المشار إليها <span style="font-size:.75rem;color:var(--or);font-weight:600">(مطلوب)</span></label><select class="fsel" id="branch-emp-sel" onchange="saveBranchEmployee('${c.ref}',this.value)"><option value="">-- اختر الموظفة --</option>${empOptions}</select></div>`:'' ;
+  inner.innerHTML=`<div class="branch-view"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:12px"><div><div style="display:flex;align-items:center;gap:8px">${sBadge(c.status)}<span style="font-family:'IBM Plex Mono',monospace;font-size:.85rem;color:var(--mu); font-weight:600;">${c.ref}</span></div></div><div><div class="dh-dt">${fmtShort(c.createdAt)}</div><div class="dh-tm">${fmtTime(c.createdAt)}</div></div></div>${c.ownerPriority?`<div class="pri-banner" style="margin-bottom:16px">يجب البدء فورًا بمعالجة هذه الشكوى <small>(المالك)</small></div>`:''}<div class="branch-text">${txt}</div>${empSection}${!isExc?`<div class="fg" style="margin-top:16px"><label class="fl">إفادة مديرة الفرع</label><textarea class="ft" id="bcmt" rows="3" placeholder="أضف إفادتك وتوضيحك هنا...">${c.branchComment||''}</textarea></div><div class="brow" style="margin-top:12px"><button class="btn pri" onclick="saveComment('branch')">حفظ الإفادة</button><button class="btn" onclick="closeDetail()">إغلاق</button></div>`:`<div class="brow" style="margin-top:16px"><button class="btn" onclick="closeDetail()">إغلاق</button></div>`}</div>`;
+}
+function saveBranchEmployee(ref,emp){const c=complaints.find(x=>x.ref===ref);if(!c||!emp)return;c.branchEmployee=emp;c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:`قامت ${session.name} (مديرة ${session.branch||c.branch}) بتحديد الموظفة المشار إليها: ${emp}`});saveC();}
+
+function renderFullDetail(c,inner,r){
+  const mob=c.mobile.replace(/\D/g,'');const intl=mob.startsWith('0')?'966'+mob.slice(1):mob;const waStatus=encodeURIComponent(buildClientMsg(c));
+  const brWA=branchWA[c.branch]||'';const branchMsg=encodeURIComponent(`${buildSummary(c,false)}\n\nعزيزتي مديرة ${c.branch} نرجو تقديم إفادتك حول شكوى العميل ${c.client} فيما يتعلق بـ ${c.ctype} وذلك من خلال لوحة مديرة الفرع في نظام الشكاوى`);
+  const branchWABtn=brWA?`<button class="btn wa" onclick="window.open('https://wa.me/${brWA}?text=${branchMsg}','_blank')">طلب إفادة المديرة</button>`:'';
+  const adminWABtnFull=adminWANum?`<button class="btn" style="background:var(--gnl);color:var(--gn); border-color: var(--gnb);" onclick="sendSummaryToAdminWA('${c.ref}')">إرسال للإدارة واتساب</button>`:'';
+  const canDel=r==='maint';const adminLocked=r==='admin'&&isExcluded(c);const canStatus=!adminLocked&&(r==='admin'||r==='cs'||r==='maint');const canAdminC=r==='admin'||r==='maint';const canEdit=r==='cs'||r==='maint';const isExc=isExcluded(c);const showActions=!isExc||(r==='cs'||r==='maint');
+  let statusHTML='';if(canStatus&&showActions){const avail=statusesFor(r);statusHTML=`<select class="ssel" id="qa-ssel">${avail.map(s=>`<option value="${s}" ${s===c.status?'selected':''}>${s}</option>`).join('')}</select><button class="btn pri" style="padding:10px 14px;font-size:.85rem" onclick="changeStatus()">تحديث</button>`;}
+  let tasksHTML='';if(canAdminC&&showActions&&c.tasks){tasksHTML=`<div style="margin-top:16px"><hr class="d" style="margin:0 0 12px"><div style="font-size:.8rem;font-weight:800;color:var(--mu);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">إجراءات الشكوى للإدارة</div>${c.tasks.map(t=>`<div class="task-item"><input type="checkbox" class="task-cb" ${t.done?'checked':''} onchange="toggleTask('${c.ref}','${t.id}',this.checked)"><span class="task-lbl${t.done?' task-done':''}">${t.label}</span></div>`).join('')}</div>`;}
+  const auditHTML=(c.audit||[]).map(a=>`<div class="audit-item"><div class="audit-left"><div class="audit-date">${fmtShort(a.ts)}</div><div class="audit-time">${fmtTime(a.ts)}</div></div><div class="audit-body">${a.body}<br><span style="font-size:.75rem;color:var(--mu2)">${auditWho(a)}</span></div></div>`).join('');
+  const sumTxt=buildSummary(c,true);const cmsgTxt=buildClientMsg(c);
+  inner.innerHTML=`
+  <div class="qa-bar">
+    <button class="qa-close" onclick="closeDetail()" title="إغلاق التفاصيل">✕</button>
+    ${showActions&&canStatus?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${statusHTML}</div>`:''}
+    ${showActions&&canEdit?`<button class="btn" onclick="startEdit('${c.ref}')">تعديل الشكوى</button>`:''}
+    ${showActions?`<button class="btn" id="detail-mode-btn" onclick="toggleDetailMode('${c.ref}')">تفاصيل كاملة</button>`:''}
+    ${showActions?`<button class="btn wa" onclick="window.open('https://wa.me/${intl}?text=${waStatus}','_blank')">إشعار العميل بالحالة</button>`:''}
+    ${showActions?branchWABtn:''}
+    ${showActions?adminWABtnFull:''}
+    ${canDel?`<button class="btn dan" onclick="tryDelete()">حذف الشكوى</button>`:''}
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-family:'IBM Plex Mono',monospace;font-size:.85rem;color:var(--mu); font-weight:600;">${c.ref}</span>${sBadge(c.status)}${c.financial?'<span class="badge br" style="font-size:.7rem">مطالبة مالية</span>':''}${c.negative?'<span class="badge bpk" style="font-size:.7rem">تقييم سلبي</span>':''}${c.ownerClosed?'<span class="badge bgr" style="font-size:.7rem">معلّق</span>':''}</div>
+      <div style="font-weight:800;font-size:1.1rem;color:var(--tx)">${c.client} — ${c.gK==='f'?'الطفلة':'الطفل'} ${c.child}</div>
+      <div style="font-size:.85rem;font-weight:600; color:var(--mu);margin-top:4px">${c.branch} · ${c.ctype||'—'} · ${fmtShort(c.createdAt)} ${fmtTime(c.createdAt)}</div>
+    </div>
+  </div>
+  ${c.ownerPriority?`<div class="pri-banner" style="margin-bottom:16px">يجب البدء فورًا بمعالجة هذه الشكوى <small>(المالك)</small></div>`:''}
+  <div id="summary-sec" style="margin-bottom:16px"><div class="sbox" id="sum-txt" style="margin-bottom:12px">${sumTxt}</div><div class="cmsg-box" id="cmsg-txt">${cmsgTxt}</div></div>
+  <div id="details-sec" style="display:none;margin-bottom:16px">
+    <div class="dp">
+      <div class="dp-section"><div class="dp-section-title">بيانات العميل</div><div class="ir"><span class="ik">اسم العميل</span><span class="iv">${c.client}</span></div><div class="ir"><span class="ik">اسم الطفل</span><span class="iv">${c.child}</span></div><div class="ir"><span class="ik">رقم الجوال</span><span class="iv">${c.mobile}</span></div>${c.demo?`<div class="ir"><span class="ik">الفئة الديموغرافية</span><span class="iv">${c.demo}</span></div>`:''}</div>
+      <div class="dp-section"><div class="dp-section-title">تفاصيل الشكوى</div><div class="ir"><span class="ik">الفرع</span><span class="iv">${c.branch}</span></div><div class="ir"><span class="ik">نوع الشكوى</span><span class="iv">${c.ctype||'—'}</span></div><div class="ir"><span class="ik">وصف الشكوى</span><span class="iv">${c.desc}</span></div><div class="ir"><span class="ik">المطلب المُعلن</span><span class="iv">${c.demand}</span></div>${c.hdA?`<div class="ir"><span class="ik">مطلب غير معلن</span><span class="iv">${c.hdA}</span></div>`:''}${c.origin&&c.origin.trim()?`<div class="ir"><span class="ik">مصدر المشكلة</span><span class="iv">${c.origin}</span></div>`:''}${c.sentiment?`<div class="ir"><span class="ik">تقرير المشاعر</span><span class="iv">${c.sentiment}</span></div>`:''}${c.csnote&&c.csnote.trim()?`<div class="ir"><span class="ik">ملاحظة خدمة العملاء</span><span class="iv">${c.csnote}</span></div>`:''}${c.hasEmp&&c.branchEmployee?`<div class="ir"><span class="ik">الموظفة المشار إليها</span><span class="iv">${c.branchEmployee}</span></div>`:''}${c.reopenReason?`<div class="ir"><span class="ik">سبب إعادة الفتح</span><span class="iv">${c.reopenReason}</span></div>`:''}</div>
+      ${c.branchComment||c.adminComment?`<div class="dp-section"><div class="dp-section-title">الإفادات والتوضيحات</div>${c.branchComment?`<div class="ir"><span class="ik">إفادة مديرة الفرع</span><span class="iv">${c.branchComment}</span></div>`:''}${c.adminComment?`<div class="ir"><span class="ik">توضيح من الإدارة</span><span class="iv">${c.adminComment}</span></div>`:''}</div>`:''}
+    </div>
+    ${tasksHTML}
+    ${canAdminC&&showActions?`<div style="margin-top:16px;background:var(--sur);border: 1px solid var(--border-light); border-radius:var(--r);padding:20px;box-shadow:var(--shs)"><div class="fg" style="margin-bottom:10px"><label class="fl">توضيح من الإدارة <span style="font-weight:600;color:var(--mu2);font-size:.75rem">(للمالك فقط)</span></label><textarea class="ft" id="acmt" rows="2" placeholder="أضف توضيحاً للمالك...">${c.adminComment||''}</textarea></div><button class="btn pri" style="font-size:.85rem" onclick="saveComment('admin')">حفظ التوضيح</button></div>`:''}
+    <div style="${c.audit&&c.audit.length?'':'display:none'};margin-top:16px;background:var(--sur);border: 1px solid var(--border-light); border-radius:var(--r);padding:20px;box-shadow:var(--shs)"><div class="audit-t">سجل الإجراءات</div><div>${auditHTML}</div></div>
+  </div>
+  <div id="edit-sec" style="display:none;margin-bottom:16px">
+    <div class="card" style="margin:0 0 12px">
+      <div class="two"><div class="fg"><label class="fl">اسم العميل</label><input class="fi" id="edit-client" value="${c.client}"></div><div class="fg"><label class="fl">اسم الطفل</label><input class="fi" id="edit-child" value="${c.child}"></div></div>
+      <div class="fg"><label class="fl">رقم الجوال</label><input class="fi" id="edit-mobile" value="${c.mobile}"></div>
+      <div class="fg"><label class="fl">الفرع</label><select class="fsel" id="edit-branch">${['فرع القصر','فرع سلام مول','فرع الرياض جاليري','فرع ذا ڤيو مول','فرع مركز المملكة','فرع شرق بلازا'].map(b=>`<option ${c.branch===b?'selected':''}>${b}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">وصف الشكوى</label><textarea class="ft" id="edit-desc" rows="3">${c.desc}</textarea></div>
+      <div class="fg"><label class="fl">المطلب المُعلن</label><textarea class="ft" id="edit-demand" rows="2">${c.demand}</textarea></div>
+      <div class="fg"><label class="fl">المطلب غير المعلن</label><input class="fi" id="edit-hda" value="${c.hdA||''}"></div>
+      <div class="fg"><label class="fl">مصدر المشكلة</label><input class="fi" id="edit-origin" value="${c.origin||''}"></div>
+      <div class="fg"><label class="fl">ملاحظة خدمة العملاء</label><textarea class="ft" id="edit-csnote" rows="2">${c.csnote||''}</textarea></div>
+      <label class="ck" style="margin-bottom:10px"><input type="checkbox" id="edit-financial" ${c.financial?'checked':''}>الشكوى تتضمن مطالبة مالية</label>
+      <label class="ck" style="margin-bottom:10px"><input type="checkbox" id="edit-hasemp" ${c.hasEmp?'checked':''}>هل تم الإشارة إلى موظفة؟</label>
+      <label class="ck" style="margin-bottom:10px"><input type="checkbox" id="edit-neg" ${c.negative?'checked':''} onchange="cond('edit-neg-cond',this.checked)">تحولت إلى تقييم سلبي</label>
+      <div class="cond ${c.negative?'v':'h'}" id="edit-neg-cond"><textarea class="ft" id="edit-neg-text" rows="2">${c.negText||''}</textarea></div>
+      <div class="brow" style="margin-top:12px"><button class="btn pri" onclick="saveEdit('${c.ref}')">حفظ التعديلات</button><button class="btn" onclick="document.getElementById('edit-sec').style.display='none'">إلغاء</button></div>
+    </div>
+  </div>`;
+}
+
+function toggleDetailMode(ref){const sumSec=document.getElementById('summary-sec');const detSec=document.getElementById('details-sec');const btn=document.getElementById('detail-mode-btn');if(!sumSec||!detSec)return;if(sumSec.style.display!=='none'){sumSec.style.display='none';detSec.style.display='block';if(btn)btn.textContent='العودة للنص';}else{detSec.style.display='none';sumSec.style.display='block';if(btn)btn.textContent='تفاصيل كاملة';}}
+function startEdit(ref){const sec=document.getElementById('edit-sec');if(!sec)return;sec.style.display=sec.style.display==='none'?'block':'none';}
+function saveEdit(ref){
+  const c=complaints.find(x=>x.ref===ref);if(!c)return;
+  c.client=document.getElementById('edit-client').value.trim()||c.client;c.child=document.getElementById('edit-child').value.trim()||c.child;
+  c.mobile=document.getElementById('edit-mobile').value.trim()||c.mobile;c.branch=document.getElementById('edit-branch').value||c.branch;
+  c.desc=document.getElementById('edit-desc').value.trim()||c.desc;c.demand=document.getElementById('edit-demand').value.trim()||c.demand;
+  c.hdA=document.getElementById('edit-hda').value.trim()||null;c.origin=document.getElementById('edit-origin').value.trim()||null;
+  c.csnote=document.getElementById('edit-csnote').value.trim()||'';c.financial=document.getElementById('edit-financial').checked;
+  c.hasEmp=document.getElementById('edit-hasemp').checked;if(!c.hasEmp)c.branchEmployee=null;
+  c.negative=document.getElementById('edit-neg').checked;c.negText=document.getElementById('edit-neg-text').value.trim()||'';
+  c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:'تم تعديل بيانات الشكوى'});
+  saveC();closeDetail();showDetail(ref);showToast('تم حفظ التعديلات بنجاح','ok');
+}
+function sendSummaryToAdminWA(ref){
+  if(!adminWANum){showToast('لم يتم إدخال رقم الإدارة في لوحة الصيانة','err');return;}
+  const c=complaints.find(x=>x.ref===ref);if(!c)return;const summaryTxt=buildSummary(c,true);const mob=c.mobile.replace(/\D/g,'');const intl=mob.startsWith('0')?'966'+mob.slice(1):mob;const fullMsg=encodeURIComponent(`${summaryTxt}\n\n───────────\nرابط إشعار العميل:\n${decodeURIComponent(encodeURIComponent(buildClientMsg(c)))}`);const adm=adminWANum.replace(/\D/g,'');const admIntl=adm.startsWith('0')?'966'+adm.slice(1):adm;window.open(`https://wa.me/${admIntl}?text=${fullMsg}`,'_blank');
+}
+function tryDelete(){if(session.role!=='maint'&&session.role!=='owner'){showModal('','تم إلغاء صلاحيتك لهذا الإجراء');return;}if(!confirm('هل أنت متأكد من حذف هذه الشكوى نهائياً؟'))return;complaints=complaints.filter(c=>c.ref!==currentRef);saveC();closeDetail();renderList();showToast('تم الحذف بنجاح','ok');}
+function changeStatus(){
+  const c=complaints.find(x=>x.ref===currentRef);if(!c)return;
+  const r=session.role;if(r==='admin'&&isExcluded(c)){showToast('لا يمكن تغيير الحالة للشكاوى المستبعدة','err');return;}
+  const sel=document.getElementById('qa-ssel');if(!sel)return;const nv=sel.value;
+  if(nv==='معاد فتحها'){const reason=prompt('يرجى كتابة سبب إعادة فتح الشكوى:');if(!reason)return;c.reopenReason=reason;}
+  if(!(SPERMS[nv]||[]).includes(r)){showToast('ليس لديك صلاحية لتغيير الحالة','err');return;}
+  const old=c.status;c.status=nv;if(nv==='تمت المعالجة')c.ownerPriority=false;
+  c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:`تم تغيير الحالة من "${old}" إلى "${nv}"`+(c.reopenReason&&nv==='معاد فتحها'?` — السبب: ${c.reopenReason}`:'')});
+  saveC();closeDetail();showDetail(c.ref);renderList();showToast('تم تحديث الحالة بنجاح','ok');
+}
+function saveComment(type){
+  const c=complaints.find(x=>x.ref===currentRef);if(!c)return;
+  const inp=document.getElementById(type==='admin'?'acmt':'bcmt');if(!inp){showToast('حقل التعليق غير موجود','err');return;}
+  const txt=inp.value.trim();if(!txt){showToast('الحقل فارغ','err');return;}
+  if(type==='admin'){c.adminComment=txt;}else{c.branchComment=txt;const hasEmpNote=c.hasEmp&&c.branchEmployee?` وقامت بتحديد الموظفة المشار إليها: ${c.branchEmployee}`:'';c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:`أضافت ${session.name} (مديرة ${session.branch||c.branch}) إفادة على الشكوى${hasEmpNote}`});}
+  saveC();closeDetail();showDetail(c.ref);showToast('تم الحفظ بنجاح','ok');
+}
+function toggleTask(ref,tid,done){const c=complaints.find(x=>x.ref===ref);if(!c)return;const t=(c.tasks||[]).find(x=>x.id===tid);if(!t)return;t.done=done;if(t.id==='t2'&&done){c.status='تمت المعالجة';c.ownerPriority=false;}c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:`${done?'تم إتمام':'تم إلغاء'} المهمة: ${t.label}`});saveC();closeDetail();showDetail(ref);}
+function togglePriority(ref){const c=complaints.find(x=>x.ref===ref);if(!c)return;c.ownerPriority=!c.ownerPriority;const ownerName=users.find(u=>u.role==='owner')?.name||session.name;c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:c.ownerPriority?`قام المالك (${ownerName}) بتحديد معالجة هذه الشكوى كأولوية قصوى لكل من له علاقة بها`:`قام المالك (${ownerName}) بإلغاء الأولوية القصوى`});saveC();closeDetail();showDetail(ref);renderList();showToast(c.ownerPriority?'تم تعيين الشكوى كأولوية':'تم إلغاء الأولوية','ok');}
+
+// ═══ REQUEST DETAIL ═══
+function showReqDetail(ref){
+  const rq=requests.find(x=>x.ref===ref);if(!rq)return;
+  if(currentReqRef===ref){closeReqDetail();return;}closeReqDetail();currentReqRef=ref;const r=session.role;
+  const card=document.querySelector(`.cc[onclick="showReqDetail('${ref}')"]`);const detailDiv=document.createElement('div');detailDiv.className='cc-detail-inline';detailDiv.id='req-detail-inline-'+ref;
+  if(card&&card.parentNode){card.parentNode.insertBefore(detailDiv,card.nextSibling);}else{document.getElementById('req-list-content').appendChild(detailDiv);}
+  const inner=detailDiv;document.getElementById('req-detail-view').style.display='none';
+  const mob=rq.mobile.replace(/\D/g,'');const intl=mob.startsWith('0')?'966'+mob.slice(1):mob;const clientMsg=buildReqClientMsg(rq);const waMsg=encodeURIComponent(clientMsg);
+  const canEdit=r==='cs'||r==='maint';const isExc=rq.status==='طلب مستبعد';const showActions=!isExc||(r==='cs'||r==='maint');
+  let statusHTML='';if(showActions){statusHTML=`<select class="ssel" id="rqa-ssel">${['تم استلام الطلب','تمت معالجة الطلب','طلب مستبعد'].map(s=>`<option value="${s}" ${s===rq.status?'selected':''}>${s}</option>`).join('')}</select><button class="btn pri" style="padding:10px 14px;font-size:.85rem" onclick="changeReqStatus()">تحديث</button>`;}
+  const auditHTML=(rq.audit||[]).map(a=>`<div class="audit-item"><div class="audit-left"><div class="audit-date">${fmtShort(a.ts)}</div><div class="audit-time">${fmtTime(a.ts)}</div></div><div class="audit-body">${a.body}<br><span style="font-size:.75rem;color:var(--mu2)">${auditWho(a)}</span></div></div>`).join('');
+  inner.innerHTML=`
+  <div class="qa-bar"><span class="qa-lbl">الإجراءات:</span><button class="btn teal" onclick="toggleReqSummary('${rq.ref}')">نص الطلب</button>${showActions?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${statusHTML}</div>`:''}${showActions&&canEdit?`<button class="btn" onclick="startReqEdit('${rq.ref}')">تعديل الطلب</button>`:''}${showActions?`<button class="btn wa" onclick="window.open('https://wa.me/${intl}?text=${waMsg}','_blank')">إفادة العميل</button>`:''}<button class="btn" onclick="closeReqDetail()">إغلاق</button></div>
+  <div class="dhead"><div style="flex:1"><div style="font-size:1.05rem;font-weight:800;margin-bottom:6px"><span style="font-family:'IBM Plex Mono',monospace;font-size:.85rem;color:var(--mu)">${rq.ref}</span>&nbsp;${rBadge(rq.status)}<span class="badge btl" style="margin-right:8px">طلب</span></div></div><div><div class="dh-dt">${fmtShort(rq.createdAt)}</div><div class="dh-tm">${fmtTime(rq.createdAt)}</div></div></div>
+  <div id="req-sum-sec" style="display:none;margin-bottom:16px"><div class="sbox" id="req-sum-txt" style="margin-bottom:12px"></div><div class="cmsg-box" id="req-cmsg-txt" style="margin-bottom:12px"></div><hr class="d"></div>
+  <div id="req-edit-sec" style="display:none;margin-bottom:16px"><div class="card" style="margin:0 0 12px"><div class="fg"><label class="fl">اسم العميل</label><input class="fi" id="re-client" value="${rq.client}"></div><div class="fg"><label class="fl">رقم الجوال</label><input class="fi" id="re-mobile" value="${rq.mobile}"></div><div class="fg"><label class="fl">الفرع</label><select class="fsel" id="re-branch"><option value="لا يتعلق بفرع محدد" ${rq.branch==='لا يتعلق بفرع محدد'?'selected':''}>لا يتعلق بفرع محدد</option>${['فرع القصر','فرع سلام مول','فرع الرياض جاليري','فرع ذا ڤيو مول','فرع مركز المملكة','فرع شرق بلازا'].map(b=>`<option ${rq.branch===b?'selected':''}>${b}</option>`).join('')}</select></div><div class="fg"><label class="fl">وصف الطلب</label><textarea class="ft" id="re-desc" rows="3">${rq.desc}</textarea></div><div class="fg"><label class="fl">ملاحظة خدمة العملاء</label><textarea class="ft" id="re-csnote" rows="2">${rq.csnote||''}</textarea></div><div class="brow" style="margin-top:12px"><button class="btn pri" onclick="saveReqEdit('${rq.ref}')">حفظ التعديلات</button><button class="btn" onclick="document.getElementById('req-edit-sec').style.display='none'">إلغاء</button></div></div><hr class="d"></div>
+  <div class="dp"><div class="ir"><span class="ik">الفرع</span><span class="iv">${rq.branch}</span></div><div class="ir"><span class="ik">نوع الطلب</span><span class="iv">${rq.rtype||'—'}</span></div><div class="ir"><span class="ik">الوقت</span><span class="iv">${fmtTime(rq.createdAt)}</span></div><div class="ir"><span class="ik">اسم العميل</span><span class="iv">${rq.client}</span></div><div class="ir"><span class="ik">رقم الجوال</span><span class="iv">${rq.mobile}</span></div><div class="ir"><span class="ik">وصف الطلب</span><span class="iv">${rq.desc}</span></div>${rq.sentiment?`<div class="ir"><span class="ik">تقرير المشاعر</span><span class="iv">${rq.sentiment}</span></div>`:''}${rq.demo?`<div class="ir"><span class="ik">الفئة الديموغرافية</span><span class="iv">${rq.demo}</span></div>`:''}${rq.csnote&&rq.csnote.trim()?`<div class="ir"><span class="ik">ملاحظة خدمة العملاء</span><span class="iv">${rq.csnote}</span></div>`:''}<div style="${rq.audit&&rq.audit.length?'':'display:none'}"><hr class="d" style="margin:16px 0 12px"><div class="audit-t">سجل الإجراءات للطلب</div><div>${auditHTML}</div></div></div>`;
+  renderReqList();setTimeout(()=>{const c2=document.querySelector(`.cc[onclick="showReqDetail('${ref}')"]`);if(c2)c2.scrollIntoView({behavior:'smooth',block:'start'});},60);
+}
+function closeReqDetail(){if(currentReqRef){const el=document.getElementById('req-detail-inline-'+currentReqRef);if(el)el.remove();}document.getElementById('req-detail-view').style.display='none';currentReqRef=null;}
+function toggleReqSummary(ref){const sec=document.getElementById('req-sum-sec');if(!sec)return;if(sec.style.display==='none'){const rq=requests.find(x=>x.ref===ref);if(!rq)return;document.getElementById('req-sum-txt').textContent=buildReqSummary(rq);document.getElementById('req-cmsg-txt').textContent=buildReqClientMsg(rq);sec.style.display='block';}else sec.style.display='none';}
+function startReqEdit(ref){const sec=document.getElementById('req-edit-sec');if(!sec)return;sec.style.display=sec.style.display==='none'?'block':'none';}
+function saveReqEdit(ref){const rq=requests.find(x=>x.ref===ref);if(!rq)return;rq.client=document.getElementById('re-client').value.trim()||rq.client;rq.mobile=document.getElementById('re-mobile').value.trim()||rq.mobile;rq.branch=document.getElementById('re-branch').value||rq.branch;rq.desc=document.getElementById('re-desc').value.trim()||rq.desc;rq.csnote=document.getElementById('re-csnote').value.trim()||'';rq.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:'تم تعديل بيانات الطلب'});saveR();closeReqDetail();showReqDetail(ref);showToast('تم حفظ التعديلات بنجاح','ok');}
+function changeReqStatus(){const rq=requests.find(x=>x.ref===currentReqRef);if(!rq)return;const sel=document.getElementById('rqa-ssel');if(!sel)return;const nv=sel.value;const old=rq.status;rq.status=nv;rq.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:`تم تغيير حالة الطلب من "${old}" إلى "${nv}"`});saveR();closeReqDetail();showReqDetail(rq.ref);renderReqList();showToast('تم تحديث الحالة بنجاح','ok');}
+
+// ═══ MESSAGES ═══
+function renderMsgs(){
+  const el=document.getElementById('msgs-content');
+  if(!messages.length){el.innerHTML=`<div class="empty"><p>لا توجد رسائل من العملاء</p></div>`;return;}
+  el.innerHTML=messages.map(m=>`
+    <div class="msg-card"><div class="msg-meta">${fmtShort(m.ts)} — ${fmtTime(m.ts)} | ${m.mobile}${m.branch?' | '+m.branch:''}</div><div class="msg-text">${m.text}</div>
+      ${m.converted?`<div class="msg-info">تم التحويل بواسطة ${m.convertedBy} إلى ${m.convertType}</div>`:`<div class="brow"><button class="btn pri" onclick="convertMsg('${m.id}','complaint')">تحويلها إلى شكوى</button><button class="btn teal" onclick="convertMsg('${m.id}','request')">تحويلها إلى طلب</button></div>`}
+    </div>`).join('');
+}
+function convertMsg(id,type){
+  const m=messages.find(x=>x.id===id);if(!m||m.converted)return;
+  const now=new Date(),dd=pad(now.getDate(),2),mm2=pad(now.getMonth()+1,2),yr=now.getFullYear();const dateKey=`${dd}${mm2}${yr}`;
+  const converterNote=`قام ${session.name} بتحويل رسالة العميل إلى ${type==='complaint'?'شكوى':'طلب'}`;
+  if(type==='complaint'){
+    const {ref}=genRef();
+    const c={ref,branch:m.branch||'',ctype:'',dateKey,dateDisplay:`${dd}/${mm2}/${yr}`,timeDisplay:`${pad(now.getHours(),2)}:${pad(now.getMinutes(),2)}`,createdAt:nowISO(),mobile:m.mobile,client:'غير محدد',child:'غير محدد',desc:m.text,demand:'',hdQ:'no',hdA:null,origin:'رسالة العميل عبر البوابة',financial:false,hasEmp:false,negative:false,negText:'',sentiment:'',demo:'',csnote:'',gC:'m',gK:'m',status:'جارية حاليا',ownerPriority:false,adminComment:null,branchComment:null,branchEmployee:null,seenBy:{},tasks:[{id:'t1',label:'إرسال إشعار للعميل باستلام الشكوى',done:false},{id:'t2',label:'معالجة الشكوى',done:false}],audit:[{who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:converterNote}],addedBy:session.name};
+    complaints.unshift(c);saveC();m.converted=true;m.convertedBy=session.name;m.convertType='شكوى';saveM();
+    renderMsgs();goPage('list');showToast('تم تحويل الرسالة إلى شكوى — يرجى إكمال البيانات','ok');setTimeout(()=>showDetail(ref),300);
+  }else{
+    const {ref}=genReqRef();
+    const rq={ref,client:'غير محدد',mobile:m.mobile,branch:m.branch||'لا يتعلق بفرع محدد',rtype:'',desc:m.text,sentiment:'',demo:'',csnote:'',gC:'m',dateKey,dateDisplay:`${dd}/${mm2}/${yr}`,timeDisplay:`${pad(now.getHours(),2)}:${pad(now.getMinutes(),2)}`,createdAt:nowISO(),status:'تم استلام الطلب',seenBy:{},audit:[{who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:converterNote}],addedBy:session.name};
+    requests.unshift(rq);saveR();m.converted=true;m.convertedBy=session.name;m.convertType='طلب';saveM();
+    renderMsgs();goPage('reqlist');showToast('تم تحويل الرسالة إلى طلب — يرجى إكمال البيانات','ok');setTimeout(()=>showReqDetail(ref),300);
+  }
+  updateDots();
+}
+
+// ═══ BRANCH MESSAGES ═══
+function renderBranchMsgs(){
+  const el=document.getElementById('branch-msgs-content');const r=session.role;let myMsgs;
+  if(r==='branch'){myMsgs=branchMsgs.filter(bm=>bm.branch===session.branch);}else if(r==='admin'||r==='maint'){myMsgs=branchMsgs.filter(bm=>bm.branch==='admin'||bm.type==='clarification');}else{myMsgs=[];}
+  if(!myMsgs.length){el.innerHTML=`<div class="empty"><p>لا توجد رسائل</p></div>`;return;}
+  el.innerHTML=myMsgs.map(bm=>{
+    if(!bm.seenBy)bm.seenBy={};if(!bm.seenBy[session.id]){bm.seenBy[session.id]=nowISO();saveBM();}
+    const isWarn=bm.type==='warning';const isClar=bm.type==='clarification';const title=isWarn?'رسالة نظام':isClar?'طلب توضيح من المالك':'رسالة إدارية';
+    const navBtn=bm.complaintRef?`<button class="btn" style="font-size:.8rem;padding:6px 14px;margin-top:12px" onclick="goToComplaintFromMsg('${bm.complaintRef}')">الانتقال إلى تفاصيل الشكوى</button>`:'';
+    return`<div class="branch-msg-card"><div class="bm-title">${title}</div><div class="bm-body">${bm.text}</div>${bm.complaintRef?`<div class="bm-meta">مرتبطة بالشكوى رقم: ${bm.complaintRef} | ${fmtShort(bm.ts)} — ${fmtTime(bm.ts)}</div>`:''}${navBtn}</div>`;
+  }).join('');
+  setTimeout(updateDots,200);
+}
+function goToComplaintFromMsg(ref){
+  const c=complaints.find(x=>x.ref===ref);if(!c)return;goPage('list');
+  setTimeout(()=>{showDetail(ref);setTimeout(()=>{const sumSec=document.getElementById('summary-sec');if(sumSec&&sumSec.style.display==='none'){toggleDetailMode(ref);}},300);},120);
+}
+
+// ═══ WARNINGS TAB & WYSIWYG ═══
+function renderWarnings(){
+  const el=document.getElementById('warnings-content');
+  const r=session.role;
+  let vis = warnings;
+  
+  // Branch only sees approved warnings for their branch
+  if(r==='branch') vis=warnings.filter(w=>w.branch===session.branch && w.status==='approved');
+  // Hide excluded from everyone except those who can review
+  if(r!=='owner' && r!=='admin' && r!=='maint') vis = vis.filter(w=>w.status !== 'excluded');
+
+  if(!vis.length){el.innerHTML=`<div class="empty"><p>لا توجد إنذارات مسجلة</p></div>`;return;}
+
+  // Mark unseen as seen
+  vis.forEach(w=>{
+      if(!w.seenBy) w.seenBy={};
+      if(!w.seenBy[session.id]){
+         w.seenBy[session.id]=nowISO();
+      }
+  });
+  localStorage.setItem('ims_w',JSON.stringify(warnings));
+
+  el.innerHTML=vis.map(w=>{
+    let badge = ''; let border = '';
+    if(w.status === 'draft') { badge = '<span class="badge bam">بانتظار المراجعة ⏳</span>'; border = 'border-right:5px solid var(--am)'; }
+    else if(w.status === 'approved') { badge = '<span class="badge bg">معتمد - تم الإرسال للموظفة ✔️</span>'; border = 'border-right:5px solid var(--gn)'; }
+    else if(w.status === 'revoked') { badge = '<span class="badge bo">مسحوب ↩️</span>'; border = 'border-right:5px solid var(--or)'; }
+    else if(w.status === 'excluded') { badge = '<span class="badge bgr">مستبعد ❌</span>'; border = 'border-right:5px solid var(--mu2)'; }
+
+    return `
+    <div class="card" style="margin-bottom:12px; padding:20px; ${border}">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div style="font-weight:800;font-size:1.1rem;color:var(--tx)">${w.emp} <span style="font-size:.85rem;color:var(--mu); font-weight:600;">(${w.branch})</span></div>
+          <div style="font-size:.9rem;color:var(--tx2);margin-top:4px; font-weight:600;">${w.title} - للشكوى رقم: ${w.ref}</div>
+          <div style="font-size:.8rem;color:var(--mu);margin-top:8px; display:flex; gap:10px; align-items:center;">
+             ${badge} <span style="color:var(--mu2)">${fmtShort(w.ts)}</span>
+          </div>
+        </div>
+        <div class="brow">
+          <button class="btn pri" onclick="reviewA4('${w.id}', false)">معاينة المستند</button>
+        </div>
+      </div>
+    </div>
+  `}).join('');
+  setTimeout(updateDots,200);
+}
+
+let currentA4 = null;
+function reviewA4(id, editMode = false){
+  currentA4 = warnings.find(w=>w.id===id);
+  if(!currentA4)return;
+  
+  document.getElementById('a4-title').textContent = currentA4.title;
+  // Load HTML Content
+  document.getElementById('a4-content').innerHTML = currentA4.text;
+  document.getElementById('a4-date').textContent = fmtShort(currentA4.ts);
+  
+  const sigEl = document.getElementById('a4-sig-img');
+  if(signatureBase64 && currentA4.status==='approved'){
+     sigEl.src = signatureBase64;
+     sigEl.style.display = 'inline-block';
+  } else {
+     sigEl.style.display = 'none';
+  }
+
+  const tb = document.getElementById('a4-toolbar');
+  const contentArea = document.getElementById('a4-content');
+  let actionsHTML='';
+
+  if(editMode) {
+      tb.style.display = 'flex';
+      contentArea.contentEditable = "true";
+      contentArea.focus();
+      actionsHTML = `
+        <button class="btn pri" onclick="saveWarningText('${id}')">حفظ التعديلات</button>
+        <button class="btn" onclick="reviewA4('${id}', false)">إلغاء التعديل</button>
+      `;
+  } else {
+      tb.style.display = 'none';
+      contentArea.contentEditable = "false";
+      
+      const r = session.role;
+      const canManage = (r==='owner' || r==='admin' || r==='maint');
+
+      if((currentA4.status==='draft' || currentA4.status==='revoked') && canManage){
+         actionsHTML = `
+           <button class="btn pri" onclick="approveWarning('${id}')">اعتماد وإرسال</button>
+           <button class="btn teal" onclick="reviewA4('${id}', true)">تعديل النص</button>
+           <button class="btn dan" onclick="excludeWarning('${id}')">استبعاد</button>
+           <button class="btn" onclick="closeA4()">إغلاق</button>
+         `;
+      } else if(currentA4.status==='approved') {
+         actionsHTML = `
+           ${canManage ? `<button class="btn amb" onclick="revokeWarning('${id}')">سحب الإنذار</button>` : ''}
+           <button class="btn gn" onclick="downloadPDF()">تنزيل ملف PDF</button>
+           <button class="btn" onclick="closeA4()">إغلاق</button>
+         `;
+      } else {
+         // Excluded state or read-only
+         actionsHTML = `<button class="btn" onclick="closeA4()">إغلاق</button>`;
+      }
+  }
+
+  document.getElementById('a4-actions').innerHTML = actionsHTML;
+  document.getElementById('a4-modal').classList.add('on');
+}
+
+function execCmd(command, value = null) {
+   document.execCommand(command, false, value);
+   document.getElementById('a4-content').focus();
+}
+
+function saveWarningText(id) {
+   const w = warnings.find(x=>x.id===id); if(!w)return;
+   w.text = document.getElementById('a4-content').innerHTML; // Save Edited HTML
+   localStorage.setItem('ims_w',JSON.stringify(warnings));
+   reviewA4(id, false); // Return to preview mode
+   showToast('تم حفظ التعديلات بنجاح', 'ok');
+}
+
+function closeA4(){ 
+   document.getElementById('a4-modal').classList.remove('on'); 
+   document.getElementById('a4-content').contentEditable = "false";
+   document.getElementById('a4-toolbar').style.display = 'none';
+}
+
+function approveWarning(id){
+   const w = warnings.find(x=>x.id===id); if(!w)return;
+   w.status = 'approved';
+   localStorage.setItem('ims_w',JSON.stringify(warnings));
+   
+   // update complaint audit log
+   const c = complaints.find(x=>x.ref===w.ref);
+   if(c){
+     c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:`تم اعتماد "${w.title}" للموظفة ${w.emp}`});
+     saveC();
+     const ownerName=users.find(u=>u.role==='owner')?.name||session.name;
+     const bm={id:'bm-'+Date.now(),branch:c.branch,complaintRef:c.ref,empName:c.branchEmployee,from:ownerName,ts:nowISO(),seenBy:{},text:`تم إصدار واعتماد "${w.title}" للموظفة ${c.branchEmployee} وهو متاح للتحميل من سجل الإنذارات.`,type:'warning'};
+     branchMsgs.unshift(bm);saveBM();
+   }
+   
+   reviewA4(id, false); // refresh modal buttons
+   renderWarnings();
+   showToast('تم اعتماد الإنذار بنجاح وتم الإرسال للموظفة','ok');
+   updateDots();
+}
+
+function revokeWarning(id){
+   if(!confirm('هل أنت متأكد من سحب هذا الإنذار؟ سيتم إخفاؤه من لوحة مديرة الفرع وتعود حالته إلى مسودة.')) return;
+   const w = warnings.find(x=>x.id===id); if(!w)return;
+   w.status = 'revoked';
+   localStorage.setItem('ims_w',JSON.stringify(warnings));
+   
+   const c = complaints.find(x=>x.ref===w.ref);
+   if(c){
+     c.audit.push({who:session.name,uid:session.id,role:session.role,ts:nowISO(),body:`تم سحب وإلغاء إرسال "${w.title}" للموظفة ${w.emp}`});
+     saveC();
+   }
+   
+   reviewA4(id, false);
+   renderWarnings();
+   showToast('تم سحب الإنذار، وعاد إلى حالة المسودة','ok');
+}
+
+function excludeWarning(id) {
+   if(!confirm('هل أنت متأكد من استبعاد هذا الإنذار بشكل نهائي؟')) return;
+   const w = warnings.find(x=>x.id===id); if(!w)return;
+   w.status = 'excluded';
+   localStorage.setItem('ims_w',JSON.stringify(warnings));
+   
+   closeA4();
+   renderWarnings();
+   showToast('تم استبعاد الإنذار','ok');
+}
+
+function downloadPDF(){
+   const element = document.getElementById('a4-document');
+   const opt = {
+     margin:       [0, 0, 0, 0],
+     filename:     `إنذار_${currentA4.emp.replace(/\s/g,'_')}.pdf`,
+     image:        { type: 'jpeg', quality: 0.98 },
+     html2canvas:  { scale: 2, useCORS: true, logging: false },
+     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+   };
+   showToast('جاري تجهيز وتحميل الملف...', 'ok');
+   html2pdf().set(opt).from(element).save().then(()=>{
+       showToast('تم التحميل بنجاح', 'ok');
+   });
+}
+
+// ═══ STATS ═══
+function renderStats(){
+  const el=document.getElementById('stats-content');
+  function msToH(ms){if(!ms||ms<0)return'—';const h=Math.floor(ms/3600000);const d=Math.floor(h/24);if(d>0)return`${d} يوم`;if(h>0)return`${h} ساعة`;return`أقل من ساعة`;}
+  const done=complaints.filter(c=>c.status==='تمت المعالجة');const total=complaints.length;const closedC=complaints.filter(c=>isDone(c)).length;const closeRate=total?Math.round(closedC/total*100):0;
+  let avgDoneMs=0;if(done.length){const times=done.map(c=>{const last=(c.audit||[]).filter(a=>a.body&&a.body.includes('تمت المعالجة'));if(!last.length)return null;return new Date(last[last.length-1].ts).getTime()-new Date(c.createdAt).getTime();}).filter(x=>x!==null);if(times.length)avgDoneMs=times.reduce((a,b)=>a+b,0)/times.length;}
+  let avgRespMs=0;const withResp=complaints.filter(c=>c.audit&&c.audit.length>1);if(withResp.length){const rts=withResp.map(c=>{const first=c.audit.find(a=>a.uid!=='sys'&&a.ts!==c.audit[0].ts);if(!first)return null;return new Date(first.ts).getTime()-new Date(c.createdAt).getTime();}).filter(x=>x!==null&&x>0);if(rts.length)avgRespMs=rts.reduce((a,b)=>a+b,0)/rts.length;}
+  const doneReq=requests.filter(r=>isReqDone(r));const totalReq=requests.length;const closeRateReq=totalReq?Math.round(doneReq.length/totalReq*100):0;
+  let avgReqMs=0;if(doneReq.length){const rts=doneReq.map(r=>{const last=(r.audit||[]).filter(a=>a.body&&a.body.includes('تمت معالجة الطلب'));if(!last.length)return null;return new Date(last[last.length-1].ts).getTime()-new Date(r.createdAt).getTime();}).filter(x=>x!==null);if(rts.length)avgReqMs=rts.reduce((a,b)=>a+b,0)/rts.length;}
+  el.innerHTML=`<div class="stats-grid"><div class="stat-box"><h3>مؤشرات أداء الشكاوى</h3><div class="stat-row"><span class="stat-lbl">إجمالي الشكاوى</span><span class="stat-val">${total}</span></div><div class="stat-row"><span class="stat-lbl">تمت المعالجة بنجاح</span><span class="stat-val">${done.length}</span></div><div class="stat-row"><span class="stat-lbl">نسبة الإغلاق الكلية</span><span class="stat-val">${closeRate}%</span></div><div class="stat-row"><span class="stat-lbl">متوسط وقت المعالجة</span><span class="stat-val">${msToH(avgDoneMs)}</span></div><div class="stat-row"><span class="stat-lbl">متوسط سرعة الاستجابة الأولى</span><span class="stat-val">${msToH(avgRespMs)}</span></div></div><div class="stat-box"><h3>مؤشرات أداء الطلبات</h3><div class="stat-row"><span class="stat-lbl">إجمالي الطلبات</span><span class="stat-val">${totalReq}</span></div><div class="stat-row"><span class="stat-lbl">تمت المعالجة</span><span class="stat-val">${doneReq.length}</span></div><div class="stat-row"><span class="stat-lbl">نسبة الإنجاز</span><span class="stat-val">${closeRateReq}%</span></div><div class="stat-row"><span class="stat-lbl">متوسط وقت الإنجاز</span><span class="stat-val">${msToH(avgReqMs)}</span></div></div></div><div class="stats-grid"><div class="stat-mini"><div class="sn">${complaints.filter(c=>c.negative).length}</div><div class="sl">تقييمات سلبية مسجلة</div></div><div class="stat-mini"><div class="sn">${complaints.filter(c=>c.financial).length}</div><div class="sl">مطالبات مالية</div></div><div class="stat-mini"><div class="sn">${messages.filter(m=>!m.converted).length}</div><div class="sl">رسائل عملاء جديدة (بانتظار التحويل)</div></div><div class="stat-mini"><div class="sn">${requests.filter(r=>r.status==='تم استلام الطلب').length}</div><div class="sl">طلبات قيد المعالجة حالياً</div></div></div>`;
+}
+
+// ═══ FILTER ═══
+function runFilter(){
+  renderCtypeForm();const brs=Array.from(document.querySelectorAll('#fb-wrap input:checked')).map(x=>x.value);const tps=Array.from(document.querySelectorAll('#ft-wrap input:checked')).map(x=>x.value);const sts=Array.from(document.querySelectorAll('#fst-wrap input:checked')).map(x=>x.value);
+  let res=[...complaints];if(session.role==='branch')res=res.filter(c=>c.branch===session.branch);
+  if(brs.length)res=res.filter(c=>brs.includes(c.branch));if(tps.length)res=res.filter(c=>tps.includes(c.ctype));if(sts.length)res=res.filter(c=>sts.includes(c.status));
+  const done=res.filter(c=>c.status==='تمت المعالجة');const closedC=res.filter(c=>isDone(c)).length;const closeRate=res.length?Math.round(closedC/res.length*100):0;
+  let avgMs=0;if(done.length){const times=done.map(c=>{const last=(c.audit||[]).filter(a=>a.body&&a.body.includes('تمت المعالجة'));if(!last.length)return null;return new Date(last[last.length-1].ts).getTime()-new Date(c.createdAt).getTime();}).filter(x=>x!==null);if(times.length)avgMs=times.reduce((a,b)=>a+b,0)/times.length;}
+  function msToH(ms){if(!ms||ms<0)return'—';const h=Math.floor(ms/3600000);const d=Math.floor(h/24);if(d>0)return`${d} يوم`;if(h>0)return`${h} ساعة`;return`أقل من ساعة`;}
+  document.getElementById('filter-stats').innerHTML=`<h3>إحصائيات الشكاوى (حسب التصفية)</h3><div class="stat-row"><span class="stat-lbl">عدد الشكاوى في النتائج</span><span class="stat-val">${res.length}</span></div><div class="stat-row"><span class="stat-lbl">متوسط وقت المعالجة</span><span class="stat-val">${msToH(avgMs)}</span></div><div class="stat-row"><span class="stat-lbl">نسبة الإغلاق</span><span class="stat-val">${closeRate}%</span></div>`;
+  document.getElementById('filter-count').textContent=`النتائج: ${res.length} شكوى مطابقة`;
+  document.getElementById('filter-res').innerHTML=res.length?res.map(c=>cCard(c,session.role)).join(''):`<div class="empty"><p>لا توجد نتائج مطابقة</p></div>`;
+}
+function clearFilters(){document.querySelectorAll('#page-filter input[type=checkbox]').forEach(x=>x.checked=false);runFilter();}
+
+// ═══ REPUTATION ═══
+function renderRep(){
+  const el=document.getElementById('rep-content');const r=session.role;
+  if(r!=='cs'&&r!=='owner'&&r!=='maint'){el.innerHTML=`<div class="no-access"><h3>تم إلغاء صلاحية وصولك إلى هذه الصفحة بواسطة المالك</h3></div>`;return;}
+  const threeMonthsAgo=Date.now()-90*24*3600000;const recentComplaints=complaints.filter(c=>new Date(c.createdAt).getTime()>threeMonthsAgo);
+  const cc={},ec={},bc={},tc={};complaints.forEach(c=>{cc[c.client]=(cc[c.client]||0)+1;if(c.hasEmp&&c.branchEmployee)ec[c.branchEmployee]=(ec[c.branchEmployee]||0)+1;bc[c.branch]=(bc[c.branch]||0)+1;if(c.ctype)tc[c.ctype]=(tc[c.ctype]||0)+1;});
+  const rcc={},rec={},rbc={},rtc={};recentComplaints.forEach(c=>{rcc[c.client]=(rcc[c.client]||0)+1;if(c.hasEmp&&c.branchEmployee)rec[c.branchEmployee]=(rec[c.branchEmployee]||0)+1;rbc[c.branch]=(rbc[c.branch]||0)+1;if(c.ctype)rtc[c.ctype]=(rtc[c.ctype]||0)+1;});
+  const sorted=obj=>Object.entries(obj).sort((a,b)=>b[1]-a[1]);const filtered=obj=>sorted(obj).filter(([,cnt])=>cnt>3);
+  const allRisks=[...Object.entries(rcc).filter(([,cnt])=>cnt>=3).map(([n,cnt])=>({n,cnt,cat:'عميل'})),...Object.entries(rec).filter(([,cnt])=>cnt>=3).map(([n,cnt])=>({n,cnt,cat:'موظفة'})),...Object.entries(rbc).filter(([,cnt])=>cnt>=3).map(([n,cnt])=>({n,cnt,cat:'فرع'})),...Object.entries(rtc).filter(([,cnt])=>cnt>=3).map(([n,cnt])=>({n,cnt,cat:'نوع شكوى'})),].sort((a,b)=>b.cnt-a.cnt);
+  let riskHTML='';
+  if(!allRisks.length){riskHTML=`<div class="risk-safe-banner"><div class="risk-safe-icon">&#9733;</div><div class="risk-safe-txt">مؤشر مخاطر السمعة منخفض وإيجابي</div><div class="risk-safe-sub">لا توجد مخاطر متكررة بشكل مقلق خلال آخر ٣ أشهر</div></div>`;}
+  else{riskHTML=`<div class="risk-grid">${allRisks.map(({n,cnt,cat})=>{let cls='risk-card-y',level='تحذير الانتباه';if(cnt>5){cls='risk-card-r';level='خطر عالٍ للسمعة';}else if(cnt===5){cls='risk-card-o';level='تصاعد مستمر';}return`<div class="risk-card ${cls}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="risk-card-count">${cnt}</div><div class="risk-card-name">${n}</div></div><span class="risk-card-badge">${cat}</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><div class="risk-card-label">معدل التكرار / ٣ أشهر</div><span class="risk-card-badge">${level}</span></div></div>`;}).join('')}</div>`;}
+  function buildSection(title,icon,data){if(!data.length)return'';const maxVal=data[0][1];const fills=['#4f46e5','#7c3aed','#e11d48','#ea580c','#059669','#ea580c','#0ea5e9','#4f46e5','#65a30d','#e11d48'];return`<div class="rep-section"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><span style="font-size:.9rem;color:var(--mu2)">${icon}</span><span style="font-size:.95rem;font-weight:800;color:var(--tx)">${title}</span></div>${data.map(([name,cnt],i)=>`<div class="rep-row"><div class="rep-rank">${i+1}</div><div class="rep-name">${name}</div><div class="rep-track"><div class="rep-fill" style="width:${Math.round(cnt/maxVal*100)}%;background:${fills[i%fills.length]}"></div></div><div class="rep-cnt" style="color:${fills[i%fills.length]}">${cnt}</div></div>`).join('')}</div>`;}
+  const fCC=filtered(cc), fEC=filtered(ec), fBC=filtered(bc), fTC=filtered(tc);const hasData=fCC.length||fEC.length||fBC.length||fTC.length;
+  el.innerHTML=`<div class="rep-page"><div class="rep-section"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><span style="font-size:.9rem;color:var(--rd)">&#9888;</span><span style="font-size:.95rem;font-weight:800;color:var(--tx)">مخاطر السمعة النشطة</span><span style="font-size:.75rem; font-weight: 600; color:var(--mu);margin-right:auto">آخر ٣ أشهر</span></div>${riskHTML}</div>${!hasData?`<div class="rep-section" style="text-align:center;padding:32px 20px"><div style="font-size:.95rem;font-weight:700;color:var(--tx)">&#9685; لا توجد بيانات كافية حالياً</div><div style="font-size:.85rem;color:var(--mu);margin-top:6px">تظهر المؤشرات والأسماء عند تجاوز ٣ تكرارات للحدث</div></div>`:''}${buildSection('العملاء الأكثر تكراراً','&#9737;',fCC)}${buildSection('الموظفات المشار إليهن بالشكاوى','&#9733;',fEC)}${buildSection('تحليل الفروع','&#9635;',fBC)}${buildSection('تكرار أنواع الشكاوى','&#9632;',fTC)}</div>`;
+}
+
+// ═══ SEARCH ═══
+function gSearch(q){
+  const drop=document.getElementById('gdrop');q=q.trim().toLowerCase();if(!q){drop.style.display='none';return;}
+  let pool=[...complaints];if(session.role==='branch')pool=pool.filter(c=>c.branch===session.branch);
+  const cRes=pool.filter(c=>c.ref.toLowerCase().includes(q)||c.client.toLowerCase().includes(q)||(c.child||'').toLowerCase().includes(q)||c.mobile.includes(q)).slice(0,5);
+  const rRes=requests.filter(r=>r.ref.toLowerCase().includes(q)||r.client.toLowerCase().includes(q)||r.mobile.includes(q)).slice(0,3);
+  const all=[...cRes.map(c=>({...c,_t:'c'})),...rRes.map(r=>({...r,_t:'r'}))];
+  if(!all.length){drop.innerHTML=`<div class="di" style="color:var(--mu2); font-weight: 500; text-align: center;">لا توجد نتائج مطابقة لبحثك</div>`;drop.style.display='block';return;}
+  drop.innerHTML=all.map(x=>x._t==='c'?`<div class="di" onclick="jumpTo('${x.ref}','c')"><div class="di-ref">${x.ref}</div><div class="di-name">${x.client} — ${x.child}</div><div class="di-sub">${x.branch} | ${fmtShort(x.createdAt)}</div></div>`:`<div class="di" onclick="jumpTo('${x.ref}','r')"><div class="di-ref">${x.ref} <span class="badge btl" style="font-size:.65rem">طلب</span></div><div class="di-name">${x.client}</div><div class="di-sub">${x.branch} | ${fmtShort(x.createdAt)}</div></div>`).join('');drop.style.display='block';
+}
+function jumpTo(ref,type){document.getElementById('gdrop').style.display='none';document.getElementById('gs').value='';if(type==='c'){goPage('list');setTimeout(()=>showDetail(ref),80);}else{goPage('reqlist');setTimeout(()=>showReqDetail(ref),80);}}
+document.addEventListener('click',e=>{if(!e.target.closest('.tbsearch'))document.getElementById('gdrop').style.display='none';});
+
+// ═══ SETTINGS ═══
+function renderSettings(){
+  document.getElementById('users-list').innerHTML=users.map(u=>`<div class="ucard"><div><div class="un">${u.name}${u.branch?' — '+u.branch:''}</div><div class="ur">${u.role==='owner'?'المالك':u.role==='admin'?'الإدارة':u.role==='branch'?'مديرة الفرع':'خدمة العملاء'}</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" style="font-size:.8rem;padding:6px 12px" onclick="editPass('${u.id}')">تغيير الرقم السري</button><button class="btn" style="font-size:.8rem;padding:6px 12px" onclick="editName('${u.id}')">تغيير الاسم</button>${u.role!=='owner'?`<button class="btn dan" style="font-size:.8rem;padding:6px 12px" onclick="delUser('${u.id}')">حذف</button>`:''}</div></div>`).join('');
+}
+function editPass(id){const p=prompt('الرقم السري الجديد للمستخدم:');if(!p)return;const u=users.find(x=>x.id===id);if(u){u.pass=p;sv();showToast('تم تحديث الرقم السري بنجاح','ok');}}
+function editName(id){const u=users.find(x=>x.id===id);if(!u)return;const n=prompt('الاسم الجديد للمستخدم:',u.name);if(!n)return;u.name=n;sv();renderSettings();showToast('تم تحديث الاسم بنجاح','ok');}
+function delUser(id){if(!confirm('تأكيد حذف المستخدم نهائياً؟'))return;users=users.filter(x=>x.id!==id);sv();renderSettings();showToast('تم حذف المستخدم بنجاح','ok');}
+function showAddUser(){document.getElementById('add-user-form').style.display='block';}
+function toggleBF(){document.getElementById('nu-bwrap').style.display=document.getElementById('nu-role').value==='branch'?'block':'none';}
+function saveNewUser(){
+  const name=document.getElementById('nu-name').value.trim(),role=document.getElementById('nu-role').value,pass=document.getElementById('nu-pass').value;
+  const branch=role==='branch'?document.getElementById('nu-branch').value:null;
+  if(!name||!pass){showToast('يرجى تعبئة جميع الحقول','err');return;}
+  users.push({id:`${role}-${Date.now()}`,name,role,pass,branch});sv();renderSettings();
+  document.getElementById('add-user-form').style.display='none';document.getElementById('nu-name').value='';document.getElementById('nu-pass').value='';
+  showToast('تم إضافة المستخدم الجديد بنجاح','ok');
+}
+
+// ═══ HELPERS ═══
+function toggleSb(){const s=document.getElementById('sidebar'),o=document.getElementById('sbov');const cl=s.classList.toggle('cl');o.classList.toggle('on',!cl);}
+function closeSb(){document.getElementById('sidebar').classList.add('cl');document.getElementById('sbov').classList.remove('on');}
+function doCopy(t){navigator.clipboard.writeText(t).then(()=>showToast('تم نسخ النص للحافظة','ok')).catch(()=>{const e=document.createElement('textarea');e.value=t;document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showToast('تم نسخ النص للحافظة','ok');});}
+function showModal(t,m){document.getElementById('m-title').textContent=t||'';document.getElementById('m-msg').textContent=m;document.getElementById('modal').classList.add('on');}
+function closeModal(){document.getElementById('modal').classList.remove('on');}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type} on`;setTimeout(()=>t.classList.remove('on'),2800);}
+
+// ═══ FONT SIZE & THEME ═══
+let fsLevel=parseFloat(localStorage.getItem('ims_fs')||'1');
+function applyFontSize(){document.documentElement.style.fontSize=(fsLevel*16)+'px';document.documentElement.style.setProperty('--fs',fsLevel);const el=document.getElementById('fs-val');if(el)el.textContent=Math.round(fsLevel*100)+'%';localStorage.setItem('ims_fs',fsLevel);}
+function changeFontSize(dir){const steps=[0.8,0.875,0.95,1,1.075,1.15,1.25];const idx=steps.reduce((best,v,i)=>Math.abs(v-fsLevel)<Math.abs(steps[best]-fsLevel)?i:best,0);fsLevel=steps[Math.max(0,Math.min(steps.length-1,idx+dir))];applyFontSize();}
+applyFontSize();
+let isDark=localStorage.getItem('ims_dark')==='1'||(localStorage.getItem('ims_dark')===null);
+function applyTheme(){document.documentElement.setAttribute('data-theme',isDark?'dark':'');const icon=isDark?'☼':'☽';['theme-btn-login','theme-btn-app'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=icon;});localStorage.setItem('ims_dark',isDark?'1':'0');}
+function toggleTheme(){isDark=!isDark;applyTheme();}
+applyTheme();
