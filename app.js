@@ -214,18 +214,18 @@ function getBNavItems(role){
 
   // قائمة كاملة بكل الصفحات وترتيبها
   const all = [
-    { id:'bnav-list',      icon:'📋', label:'الشكاوى',    page:'list',       show: true,                       inDrawer: false },
-    { id:'bnav-new',       icon:'✏️',  label:'تسجيل',     page:'new',        show: isCsOrMaint,                inDrawer: false },
-    { id:'bnav-reqlist',   icon:'📂', label:'الطلبات',    page:'reqlist',    show: isCsOrMaint,                inDrawer: false },
-    { id:'bnav-branchmsgs',icon:'💬', label:'الرسائل',    page:'branchmsgs', show: isBranch,                   inDrawer: false },
-    { id:'bnav-warnings',  icon:'⚠️',  label:'الإنذارات', page:'warnings',   show: role!=='cs',                inDrawer: false },
-    { id:'bnav-msgs',      icon:'📩', label:'العملاء',    page:'msgs',       show: isCsOrMaint,                inDrawer: true  },
-    { id:'bnav-newreq',    icon:'📝', label:'طلب جديد',   page:'newreq',     show: isCsOrMaint,                inDrawer: true  },
-    { id:'bnav-stats',     icon:'📊', label:'الإحصائيات', page:'stats',      show: !isBranch&&role!=='maint',  inDrawer: true  },
-    { id:'bnav-filter',    icon:'🔍', label:'التحليل',    page:'filter',     show: !isBranch&&!isOwner,        inDrawer: true  },
-    { id:'bnav-rep',       icon:'🛡️',  label:'السمعة',    page:'rep',        show: true,                       inDrawer: true  },
-    { id:'bnav-settings',  icon:'⚙️',  label:'المستخدمين',page:'settings',   show: role==='maint',             inDrawer: true  },
-    { id:'bnav-chpass',    icon:'🔑', label:'كلمة السر',  page:'chpass',     show: true,                       inDrawer: true  },
+    { id:'bnav-list',      icon:'', label:'الشكاوى',    page:'list',       show: true,                       inDrawer: false },
+    { id:'bnav-new',       icon:'',  label:'تسجيل',     page:'new',        show: isCsOrMaint,                inDrawer: false },
+    { id:'bnav-reqlist',   icon:'', label:'الطلبات',    page:'reqlist',    show: isCsOrMaint,                inDrawer: false },
+    { id:'bnav-branchmsgs',icon:'', label:'الرسائل',    page:'branchmsgs', show: isBranch,                   inDrawer: false },
+    { id:'bnav-warnings',  icon:'',  label:'الإنذارات', page:'warnings',   show: role!=='cs',                inDrawer: false },
+    { id:'bnav-msgs',      icon:'', label:'العملاء',    page:'msgs',       show: isCsOrMaint,                inDrawer: true  },
+    { id:'bnav-newreq',    icon:'', label:'طلب جديد',   page:'newreq',     show: isCsOrMaint,                inDrawer: true  },
+    { id:'bnav-stats',     icon:'', label:'الإحصائيات', page:'stats',      show: !isBranch&&role!=='maint',  inDrawer: true  },
+    { id:'bnav-filter',    icon:'', label:'التحليل',    page:'filter',     show: !isBranch&&!isOwner,        inDrawer: true  },
+    { id:'bnav-rep',       icon:'',  label:'السمعة',    page:'rep',        show: true,                       inDrawer: true  },
+    { id:'bnav-settings',  icon:'',  label:'المستخدمين',page:'settings',   show: role==='maint',             inDrawer: true  },
+    { id:'bnav-chpass',    icon:'', label:'كلمة السر',  page:'chpass',     show: true,                       inDrawer: true  },
   ];
 
   return all.filter(x=>x.show);
