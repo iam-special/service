@@ -285,7 +285,6 @@ function buildBottomNav(){
   drawerHTML += `
 <button class="bnav-drawer-item" onclick="logout()" aria-label="تسجيل الخروج" style="background:transparent; border-color:var(--rdb); color:var(--rd);">
   <span class="di-icon"></span>
-</button>
       <span>خروج</span>
     </button>`;
 
