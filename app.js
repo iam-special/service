@@ -283,8 +283,9 @@ function buildBottomNav(){
 
   // زر تسجيل الخروج في الدرج دائماً
   drawerHTML += `
-    <button class="bnav-drawer-item" onclick="logout()" aria-label="تسجيل الخروج" style="background:var(--rdl);border-color:var(--rdb);color:var(--rd);">
-      <span class="di-icon">🚪</span>
+<button class="bnav-drawer-item" onclick="logout()" aria-label="تسجيل الخروج" style="background:transparent; border-color:var(--rdb); color:var(--rd);">
+  <span class="di-icon"></span>
+</button>
       <span>خروج</span>
     </button>`;
 
