@@ -48,6 +48,10 @@
   --sel-bg: #f4f6f9;
   --sel-tx: var(--tx);
   --border-light: #e2e8f0;
+
+  /* Bottom nav height + safe area */
+  --bnav-h: 60px;
+  --bnav-safe: calc(var(--bnav-h) + env(safe-area-inset-bottom));
 }
 
 [data-theme="dark"] {
@@ -101,7 +105,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--tx);min-h
 .llogo h1{font-size:1.6rem;font-weight:800;color:var(--bl);letter-spacing:-.5px}
 .llogo p{font-size:.9rem;color:var(--mu);margin-top:6px}
 
-/* بطاقات الدور */
 .rgrid{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
 .rc{background:var(--bg);border-radius:var(--r2);padding:18px 20px;cursor:pointer;text-align:center;transition:var(--tr);border:2px solid var(--brd)}
 .rc:hover,.rc.sel{background:var(--bl);border-color:var(--bl);transform:scale(1.01)}
@@ -115,7 +118,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--tx);min-h
 .rn{font-size:.95rem;font-weight:700;color:var(--tx2);transition:color .2s}
 .rs{font-size:.75rem;color:var(--mu2);margin-top:4px;transition:color .2s}
 
-/* زر الثيم */
 .theme-toggle-login{position:absolute;top:16px;left:16px;background:var(--bg);border:1px solid var(--brd);border-radius:50%;width:44px;height:44px;cursor:pointer;font-size:1.2rem;display:flex;align-items:center;justify-content:center;color:var(--mu);transition:var(--tr)}
 .theme-toggle-login:hover{color:var(--tx);transform:rotate(20deg)}
 .theme-toggle-app{background:none;border:none;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:1.2rem;color:var(--mu);transition:var(--tr);flex-shrink:0}
@@ -182,8 +184,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--tx);min-h
 /* ═══ التطبيق الرئيسي ═══ */
 #app{display:none;min-height:100vh}
 
-/* الشريط الجانبي */
-.sidebar{width:260px;flex-shrink:0;background:var(--sur);border-left:1px solid var(--brd);display:flex;flex-direction:column;position:fixed;top:0;right:0;height:100vh;z-index:200;transition:transform .3s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+/* ════════════════════════════════════════
+   الشريط الجانبي — يظهر فقط على الشاشات الكبيرة
+   ════════════════════════════════════════ */
+.sidebar{
+  width:260px;flex-shrink:0;background:var(--sur);border-left:1px solid var(--brd);
+  display:flex;flex-direction:column;position:fixed;top:0;right:0;height:100vh;
+  z-index:200;transition:transform .3s cubic-bezier(.4,0,.2,1);overflow-y:auto
+}
 .sidebar.cl{transform:translateX(260px)}
 .sbov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);z-index:190}
 .sbov.on{display:block}
@@ -327,7 +335,6 @@ hr.d{border:none;border-top:1px solid var(--brd);margin:16px 0}
 .ssel{background:var(--bg);border:2px solid var(--brd);border-radius:var(--r2);padding:12px 14px;font-family:'Tajawal',sans-serif;font-size:.9rem;color:var(--tx);font-weight:600;cursor:pointer;direction:rtl;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 10 10'%3E%3Cpath fill='%2364748b' d='M5 7L1 3h8z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:left 14px center;min-width:180px;min-height:48px;transition:var(--tr)}
 .ssel:focus{outline:none;border-color:var(--bl);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
 
-/* ═══ تفاصيل الشكاوى ═══ */
 .dp{background:var(--sur);border:1px solid var(--brd);border-radius:var(--r);padding:20px;box-shadow:var(--shs)}
 .ir{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--brd)}
 .ir:last-child{padding-bottom:0;border-bottom:none}
@@ -455,6 +462,250 @@ hr.d{border:none;border-top:1px solid var(--brd);margin:16px 0}
 .a4-footer{margin-top:60px;display:flex;justify-content:space-between;align-items:flex-end;font-size:1.1rem;font-weight:bold;color:#000}
 .a4-sig{max-height:80px;max-width:180px;mix-blend-mode:multiply}
 
+
+/* ════════════════════════════════════════════════
+   ══ شريط التنقل السفلي — الجوال فقط ══
+   ════════════════════════════════════════════════ */
+
+/* الحاوي الرئيسي للشريط السفلي */
+.bottom-nav {
+  display: none; /* مخفي افتراضياً — يظهر فقط في الجوال */
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  z-index: 200;
+  background: var(--sur);
+  border-top: 1px solid var(--brd);
+  box-shadow: 0 -4px 20px rgba(0,0,0,.08);
+
+  /* المساحة الآمنة لـ iOS Home Indicator وأشرطة Android */
+  padding-bottom: env(safe-area-inset-bottom);
+
+  /* تحسينات الأداء */
+  will-change: transform;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* الشريط الداخلي — عرض الأزرار */
+.bnav-inner {
+  display: flex;
+  align-items: stretch;
+  height: var(--bnav-h);
+  /* تقسيم متساوٍ */
+  justify-content: space-around;
+}
+
+/* زر واحد في الشريط السفلي */
+.bnav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Tajawal', sans-serif;
+  color: var(--mu);
+  transition: color .18s ease, background .18s ease;
+  position: relative;
+  padding: 8px 4px;
+  border-radius: 0;
+  min-width: 0;
+  -webkit-tap-highlight-color: transparent;
+  /* منع تكبير النص على iOS */
+  touch-action: manipulation;
+}
+
+/* أيقونة الزر */
+.bnav-btn .bni {
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1);
+}
+
+/* نص الزر */
+.bnav-btn .bnl {
+  font-size: .65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 0 2px;
+}
+
+/* حالة النشاط — الزر المحدد */
+.bnav-btn.on {
+  color: var(--bl);
+}
+
+/* مؤشر نقطة خضراء للإشعارات */
+.bnav-dot {
+  position: absolute;
+  top: 6px;
+  right: calc(50% - 14px);
+  width: 8px;
+  height: 8px;
+  background: var(--gn);
+  border-radius: 50%;
+  border: 2px solid var(--sur);
+  display: none;
+}
+.bnav-btn.has-new .bnav-dot {
+  display: block;
+  animation: pulse 2s infinite;
+}
+
+/* تأثير الضغط — تكبير الأيقونة */
+.bnav-btn:active .bni {
+  transform: scale(1.25);
+}
+
+/* الخط المؤشر فوق الزر النشط */
+.bnav-btn.on::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 20%;
+  left: 20%;
+  height: 3px;
+  background: var(--bl);
+  border-radius: 0 0 3px 3px;
+}
+
+/* زر "المزيد" — خاص */
+.bnav-btn.bnav-more-btn {
+  /* لا تغيير بصري خاص */
+}
+
+.bnav-drawer {
+  display: none;
+  position: fixed;
+  bottom: var(--bnav-safe);
+  right: 0;
+  left: 0;
+  z-index: 199;
+  background: var(--sur);
+  border-top: 1px solid var(--brd);
+  border-radius: var(--r) var(--r) 0 0;
+  box-shadow: 0 -8px 32px rgba(0,0,0,.12);
+  padding: 12px 16px 16px;
+  animation: slideUp .25s cubic-bezier(.4,0,.2,1);
+}
+
+.bnav-drawer.on {
+  display: block;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* مقبض سحب الدرج */
+.bnav-drawer-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--brd);
+  border-radius: 2px;
+  margin: 0 auto 14px;
+}
+
+/* شبكة أزرار الدرج */
+.bnav-drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+/* زر داخل الدرج */
+.bnav-drawer-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--brd);
+  border-radius: var(--r2);
+  padding: 14px 8px;
+  font-family: 'Tajawal', sans-serif;
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--tx2);
+  cursor: pointer;
+  transition: var(--tr);
+  min-height: 70px;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bnav-drawer-item:active {
+  transform: scale(.96);
+  background: var(--bll);
+}
+
+.bnav-drawer-item.on {
+  background: var(--bll);
+  border-color: var(--bl);
+  color: var(--bl);
+}
+
+.bnav-drawer-item .di-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* نقطة الإشعار داخل الدرج */
+.bnav-drawer-item .di-dot {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--gn);
+  border-radius: 50%;
+  border: 2px solid var(--sur);
+  display: none;
+  animation: pulse 2s infinite;
+}
+.bnav-drawer-item.has-new .di-dot {
+  display: block;
+}
+
+/* طبقة الإغلاق خلف الدرج */
+.bnav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 198;
+  background: rgba(0,0,0,.3);
+  backdrop-filter: blur(2px);
+}
+.bnav-overlay.on {
+  display: block;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .bottom-nav {
+  box-shadow: 0 -4px 20px rgba(0,0,0,.3);
+}
+
+/* Toast يرتفع فوق الشريط السفلي في الجوال */
+@media(max-width:768px) {
+  .toast {
+    bottom: calc(var(--bnav-safe) + 12px);
+  }
+  /* مودالات تفتح فوق الشريط */
+  .mov.on .mbox {
+    padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  }
+}
+
 /* ═══ شاشة كبيرة ═══ */
 @media(min-width:769px){
   .sidebar{transform:none!important;position:fixed}
@@ -462,9 +713,33 @@ hr.d{border:none;border-top:1px solid var(--brd);margin:16px 0}
   .mbtn2{display:none}
   .sbov{display:none!important}
   .tbsearch{max-width:320px}
+  /* الشريط السفلي مخفي على الشاشات الكبيرة */
+  .bottom-nav{display:none!important}
+  .bnav-drawer{display:none!important}
+  .bnav-overlay{display:none!important}
 }
 
 /* ═══ جوال ═══ */
+@media(max-width:768px){
+  /* إظهار الشريط السفلي */
+  .bottom-nav { display: block; }
+
+  /* إخفاء الشريط الجانبي تماماً */
+  .sidebar { display: none !important; }
+  .sbov    { display: none !important; }
+
+  /* إخفاء زر الهمبرغر — لم نعد بحاجته */
+  .mbtn2 { display: none; }
+
+  /* تعويض ارتفاع الشريط السفلي في منطقة المحتوى */
+  .main {
+    padding-bottom: calc(var(--bnav-safe) + 16px);
+  }
+
+  /* تضييق شريط البحث العلوي */
+  .tbsearch { max-width: 160px; }
+}
+
 @media(max-width:480px){
   html{font-size:15px}
   .lbox{padding:28px 18px;margin:8px}
@@ -473,14 +748,12 @@ hr.d{border:none;border-top:1px solid var(--brd);margin:16px 0}
   .rc-row{grid-template-columns:1fr 1fr;gap:8px}
   .rc-row .rc{padding:14px 8px}
   .rgrid{gap:10px}
-  .sidebar{width:100vw}
-  .sidebar.cl{transform:translateX(100vw)}
   .topbar{padding:0 12px;gap:8px;height:60px}
   .tbtitle{font-size:.92rem}
   .tbsearch{max-width:130px}
   .tbsearch input{padding:9px 12px;font-size:.85rem;min-height:42px}
   .fs-btns{display:none}
-  .main{padding:16px 12px}
+  .main{padding:16px 12px;padding-bottom:calc(var(--bnav-safe) + 16px)}
   .ph h2{font-size:1.15rem}
   .card{padding:16px}
   .fi,.ft,.fsel{padding:13px 14px;font-size:.92rem;min-height:50px}
@@ -519,6 +792,12 @@ hr.d{border:none;border-top:1px solid var(--brd);margin:16px 0}
   .ucard .brow{width:100%}
   .ucard .brow .btn{flex:1}
   .ssel{min-width:140px;min-height:46px;font-size:.88rem}
+
+  /* تضييق أزرار الشريط السفلي */
+  .bnav-btn .bnl { font-size: .6rem; }
+  .bnav-btn .bni { font-size: 1.2rem; }
+  .bnav-drawer-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .bnav-drawer-item { padding: 12px 6px; min-height: 64px; font-size: .78rem; }
 }
 
 @media(max-width:360px){
@@ -527,4 +806,6 @@ hr.d{border:none;border-top:1px solid var(--brd);margin:16px 0}
   .rc-row{grid-template-columns:1fr 1fr}
   .branch-grid{grid-template-columns:1fr 1fr}
   .stats-grid{grid-template-columns:1fr}
+  .bnav-btn .bnl { display: none; }
+  .bnav-btn { gap: 0; }
 }
