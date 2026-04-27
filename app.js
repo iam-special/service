@@ -147,6 +147,7 @@ function closePinOverlay(){
 }
 
 function pinInput(idx,el){
+  if(!pinTarget)return;
   const v=el.value.replace(/\D/g,'');
   el.value=v.slice(-1);
   el.classList.toggle('filled',el.value!=='');
@@ -155,7 +156,6 @@ function pinInput(idx,el){
   if(el.value&&idx<3){
     document.getElementById('pc'+(idx+1)).focus();
   }
-  // تحقق تلقائي عند اكتمال الأربع خانات
   if(idx===3&&el.value){
     setTimeout(()=>checkPin(),80);
   }
@@ -174,10 +174,11 @@ function checkPin(){
   const pin=[0,1,2,3].map(i=>document.getElementById('pc'+i).value).join('');
   if(pin.length<4){document.getElementById('pin-err').textContent='يرجى إدخال 4 أرقام';return;}
   if(pin===pinTarget.user.pass){
+    // ← احفظ الـ callback قبل إغلاق الـ overlay لأن closePinOverlay تُصفّر pinTarget
+    const cb = pinTarget.onSuccess;
     closePinOverlay();
-    pinTarget.onSuccess();
+    cb();
   } else {
-    // اهتزاز
     for(let i=0;i<4;i++){const c=document.getElementById('pc'+i);c.classList.add('error');}
     document.getElementById('pin-err').textContent='كلمة المرور غير صحيحة';
     setTimeout(()=>{
@@ -209,12 +210,12 @@ function selRole(role,el){
   loginRole=role;
   document.querySelectorAll('.rc').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');
-  // المالك — كلمة مرور ديناميكية يومية عبر PIN
-  const ownerUser={id:'o1',name:'المالك',role:'owner',pass:getOwnerPass(),branch:null};
-  openPinOverlay(ownerUser,()=>{
-    const matched=users.find(u=>u.role==='owner')||ownerUser;
-    session={id:matched.id,role:'owner',name:matched.name,branch:null};
-    saveS(session);initApp();
+  // المالك — يستخدم كلمة المرور المخزنة في قاعدة البيانات
+  const ownerUser = users.find(u=>u.role==='owner') || {id:'o1',name:'المالك',role:'owner',pass:'2701',branch:null};
+  openPinOverlay(ownerUser, ()=>{
+    session = {id:ownerUser.id, role:'owner', name:ownerUser.name, branch:null};
+    saveS(session);
+    initApp();
   });
 }
 
@@ -316,7 +317,7 @@ function initApp(){
   setInterval(updateDots,5000);
   updateDots();
 }
-if(session)initApp();else buildRoleGrid();
+
 
 // ═══════════════════════════════════════
 //  BOTTOM NAV
@@ -1128,7 +1129,6 @@ function renderStats(){
   </div>`;
 }
 
-
 // ═══════════════════════════════════════
 //  فلاتر
 // ═══════════════════════════════════════
@@ -1264,3 +1264,6 @@ applyTheme();
   complaints.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   saveC();localStorage.setItem('ims_demo_loaded','1');
 })();
+
+// ══ تشغيل التطبيق عند التحميل ══
+if(session)initApp();else buildRoleGrid();
